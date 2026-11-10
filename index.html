@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Financial Challenge</title>
+  <meta name="description" content="FINANCIAL CHALLENGE: el reto de los estados financieros. Aprende y compite tomando decisiones empresariales. CERTUS.">
+  <link rel="icon" href="img/logo-certus.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/fc.css?v=14">
+</head>
+<body>
+
+  <div class="app">
+    <aside class="sidebar">
+      <div class="logo">
+        <img src="img/logo-certus.png" alt="CERTUS" width="1148" height="320">
+        <b>FINANCIAL<br>CHALLENGE</b>
+        <small>El reto de los estados financieros</small>
+      </div>
+      <nav class="nav" id="nav">
+        <button data-vista="ruta"><span>🗺️</span> Aprender</button>
+        <button data-vista="progreso"><span>📊</span> Mi progreso</button>
+        <button data-vista="master"><span>🔑</span> Master</button>
+        <button id="nav-salir" hidden><span>🚪</span> Cerrar sesión</button>
+      </nav>
+      <div class="sidebar-pie">Área de Finanzas · CERTUS<br>Montos en soles · NIIF 18 · NIC 7 · PCGE</div>
+    </aside>
+
+    <main class="main"><div class="main-interno" id="vista"></div></main>
+
+    <aside class="panel" id="panel"></aside>
+  </div>
+
+  <!-- Lección (niveles 1 a 4) -->
+  <div id="leccion" class="pantalla" hidden>
+    <header class="pantalla-top">
+      <button class="btn-icono" id="lec-salir" aria-label="Salir de la lección">✕</button>
+      <b id="lec-titulo" class="pantalla-titulo"></b>
+      <div class="barra"><div class="barra-relleno" id="lec-barra"></div></div>
+      <div class="vidas" title="Vidas"><span>❤️</span> <b id="lec-vidas">5</b></div>
+    </header>
+    <div class="pantalla-cuerpo" id="lec-cuerpo"></div>
+    <footer class="pie" id="lec-pie">
+      <div class="pie-interno">
+        <button class="btn btn-blanco btn-chico" id="lec-pista" hidden>💡 Pista</button>
+        <button class="btn btn-blanco btn-chico btn-comodin" id="lec-comodin" hidden>🃏 Comodín</button>
+        <div class="feedback" id="lec-feedback" hidden>
+          <div class="feedback-icono" id="lec-fb-icono"></div>
+          <div><h3 id="lec-fb-titulo"></h3><p id="lec-fb-texto"></p></div>
+        </div>
+        <button class="btn btn-principal" id="lec-boton" disabled>Comprobar</button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Caso ramificado (niveles 5 a 7) -->
+  <div id="caso" class="pantalla" hidden>
+    <header class="pantalla-top">
+      <button class="btn-icono" id="caso-salir" aria-label="Salir del caso">✕</button>
+      <b id="caso-titulo" style="flex:1"></b>
+      <span class="paso-contador" id="caso-paso"></span>
+      <span class="vidas vidas-caso" id="caso-vidas" title="Vidas"><span>❤️</span> <b id="caso-vidas-num">10</b></span>
+      <span class="reloj" id="caso-reloj"></span>
+    </header>
+    <div class="pantalla-cuerpo" id="caso-cuerpo"></div>
+    <footer class="pie" id="caso-pie">
+      <div class="pie-interno">
+        <button class="btn btn-blanco btn-chico btn-comodin" id="caso-comodin" hidden>🃏 Usar comodín</button>
+        <span class="chip rojo" id="caso-aviso" hidden>Decisión definitiva: no podrás volver atrás</span>
+        <div class="feedback" id="caso-feedback" hidden>
+          <div class="feedback-icono" id="caso-fb-icono"></div>
+          <div><h3 id="caso-fb-titulo"></h3><p id="caso-fb-texto"></p></div>
+        </div>
+        <button class="btn btn-certus btn-principal" id="caso-boton" disabled>Confirmar</button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Registro e inicio de sesión del participante -->
+  <div id="acceso" class="acceso" hidden>
+    <div class="acceso-caja" id="acceso-caja"></div>
+  </div>
+
+  <div id="modal" class="modal" hidden>
+    <div class="modal-fondo" data-cerrar></div>
+    <div class="modal-caja" role="dialog" aria-modal="true">
+      <button class="btn-icono modal-cerrar" data-cerrar aria-label="Cerrar">✕</button>
+      <div id="modal-contenido"></div>
+    </div>
+  </div>
+
+  <script src="js/config.js?v=14"></script>
+  <script src="js/datos.js?v=14"></script>
+  <script src="js/contabilidad.js?v=14"></script>
+  <script src="js/vistas.js?v=14"></script>
+  <script src="js/data/niveles.js?v=14"></script>
+  <script src="js/data/nivel1.js?v=14"></script>
+  <script src="js/data/nivel2.js?v=14"></script>
+  <script src="js/data/nivel3.js?v=14"></script>
+  <script src="js/data/nivel4.js?v=14"></script>
+  <script src="js/data/casos.js?v=14"></script>
+  <script src="js/caso-motor.js?v=14"></script>
+  <script src="js/ejercicios.js?v=14"></script>
+  <script src="js/leccion.js?v=14"></script>
+  <script src="js/caso.js?v=14"></script>
+  <script src="js/app.js?v=14"></script>
+</body>
+</html>
