@@ -19,6 +19,7 @@ FC.App = (() => {
   const ui = { vista: 'ruta', acceso: 'registro', msg: null, nuevaCuenta: null, master: { lista: null, ranking: {}, nivel: 6, error: null, ver: {}, sel: new Set(), top: 4 } };
   let sincronizando = null;
 
+  const MASTER_REFRESCO = 5000; // ms entre actualizaciones del panel master
   const progresoVacio = () => ({ xp: 0, corazones: CORAZONES_MAX, lecciones: {}, comodines: {}, guiado: {}, casos: {} });
   const claveMaster = () => { try { return sessionStorage.getItem(MASTER_SES); } catch { return null; } };
   const esMaster = () => Boolean(claveMaster());
@@ -364,6 +365,15 @@ FC.App = (() => {
   }
 
   // ---------- Master ----------
+  // Estado en vivo de un participante a partir de su última señal (segundos desde el servidor)
+  const estadoVivo = hace => hace == null ? ['⚪', 'Nunca conectado', 0] : hace < 60 ? ['🟢', 'En línea', 2] : hace < 300 ? ['🟡', `Inactivo ${Math.floor(hace / 60)} min`, 1] : ['⚪', 'Desconectado', 0];
+  function actividad(p) {
+    const casos = p.progreso?.casos || {};
+    for (const n of [7, 6]) if (casos[n]?.estado && !p.resultados?.[n]) return `🎯 Jugando nivel ${n} · decisión ${(casos[n].estado.elecciones || []).length + 1}`;
+    for (const n of [7, 6]) if (p.resultados?.[n]) return `✅ Terminó nivel ${n}`;
+    const lec = Object.entries(p.progreso?.lecciones || {}).filter(([, l]) => l.aprobada);
+    return lec.length ? `📚 Lecciones (${lec.length} aprobadas)` : '— Sin actividad';
+  }
   function vMaster() {
     if (!esMaster()) {
       return `<h1 class="vista-titulo">🔑 Acceso master</h1>
@@ -378,7 +388,10 @@ FC.App = (() => {
     if (P?.demo) return '<h1 class="vista-titulo">🔑 Panel master</h1><p class="vista-sub">Estás en la demostración. Sal de ella para volver al panel.</p>';
     const m = ui.master;
     if (!m.lista && !m.error) cargarMaster();
-    const lista = m.lista || [];
+    const lista = [...(m.lista || [])].sort((a, b) => estadoVivo(b.hace)[2] - estadoVivo(a.hace)[2]);
+    const enLinea = lista.filter(p => estadoVivo(p.hace)[2] === 2).length;
+    const jugando = n => lista.filter(p => p.progreso?.casos?.[n]?.estado && !p.resultados?.[n]).length;
+    const terminaron = n => lista.filter(p => p.resultados?.[n]).length;
     const nombreNivel = n => FC.NIVELES.find(x => x.n === n).etapa;
     const filas = lista.map(p => {
       const hechas = Object.values(p.progreso?.lecciones || {}).filter(l => l.aprobada).length;
@@ -386,6 +399,8 @@ FC.App = (() => {
       return `<tr>
         <td><input type="checkbox" class="sel" data-id="${p.id}" ${m.sel.has(p.id) ? 'checked' : ''}></td>
         <td><b>${esc(p.nombre)}</b><br><small class="muted">${esc(p.condicion)}</small></td>
+        <td style="white-space:nowrap">${estadoVivo(p.hace)[0]} ${estadoVivo(p.hace)[1]}</td>
+        <td><small><b>${esc(actividad(p))}</b></small></td>
         <td>@${esc(p.usuario)}</td>
         <td><code>${m.ver[p.id] || m.ver.todas ? esc(p.clave) : '••••••'}</code> <button class="btn-icono" title="Ver contraseña" data-accion="ver-clave" data-id="${p.id}" style="width:30px;height:30px;font-size:16px">👁</button></td>
         <td class="num">${hechas}/16</td>
@@ -400,6 +415,14 @@ FC.App = (() => {
         <button class="btn btn-blanco btn-chico" data-accion="salir-master">Salir del modo master</button></div>
       </div>
       ${m.error ? `<div class="banner-demo"><span class="emoji">⚠️</span><p>${esc(m.error)}</p><button class="btn btn-blanco btn-chico" data-accion="recargar-master">Reintentar</button></div>` : ''}
+
+      <div class="seccion"><h2>📡 Monitoreo en vivo <small class="muted" style="font-size:13px">· se actualiza cada ${MASTER_REFRESCO / 1000} s${m.actualizado ? ` · última: ${m.actualizado}` : ''}</small></h2>
+        <div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+          <div class="stat">👥 <div><small>Registrados</small>${lista.length}</div></div>
+          <div class="stat">🟢 <div><small>En línea ahora</small>${enLinea}</div></div>
+          <div class="stat">🎯 <div><small>Jugando N6 / N7</small>${jugando(6)} / ${jugando(7)}</div></div>
+          <div class="stat">✅ <div><small>Terminaron N6 / N7</small>${terminaron(6)} / ${terminaron(7)}</div></div>
+        </div></div>
 
       <div class="seccion"><h2>👩🏻‍🏫 Nivel 5 · Clase guiada</h2>
         <div class="tarjeta"><p class="muted" style="font-weight:600;margin-bottom:10px">Proyecta y resuelve cada subnivel con la clase. No hay vidas ni puntaje; el comodín se puede usar libremente para mostrar cómo funciona.</p>
@@ -418,7 +441,7 @@ FC.App = (() => {
             <button class="btn btn-blanco btn-chico" data-accion="recargar-master">↻ Actualizar</button>
           </div>
           <p style="font-weight:700;margin-bottom:12px">Seleccionar a los mejores <input class="campo" type="number" min="1" max="50" value="${m.top}" id="top-n" style="width:70px;display:inline-block;padding:6px 8px"> de la competencia (nivel 6) <button class="btn btn-blanco btn-chico" data-accion="sel-top">Seleccionar</button></p>
-          ${lista.length ? `<div class="table-wrap"><table><thead><tr><th></th><th>Participante</th><th>Usuario</th><th>Contraseña</th><th class="num">Lecciones</th><th>${nombreNivel(6)}</th><th>${nombreNivel(7)}</th><th></th></tr></thead><tbody>${filas}</tbody></table></div>`
+          ${lista.length ? `<div class="table-wrap"><table><thead><tr><th></th><th>Participante</th><th>Estado</th><th>Actividad</th><th>Usuario</th><th>Contraseña</th><th class="num">Lecciones</th><th>${nombreNivel(6)}</th><th>${nombreNivel(7)}</th><th></th></tr></thead><tbody>${filas}</tbody></table></div>`
             : `<p class="muted">${m.lista ? 'Aún no hay participantes registrados.' : 'Cargando…'}</p>`}
         </div></div>
 
@@ -440,14 +463,21 @@ FC.App = (() => {
           ${[6, 7].map(n => `<button class="btn btn-certus btn-chico" data-accion="probar-caso" data-n="${n}">N${n} · ${esc(FC.NIVELES.find(x => x.n === n).titulo)}</button>`).join('')}</div></div></div>`;
   }
 
+  let cargandoMaster = false;
   async function cargarMaster() {
     const m = ui.master;
+    if (cargandoMaster) return;
+    cargandoMaster = true;
     try {
       const [lista, r6, r7] = await Promise.all([FC.Datos.admin.listar(claveMaster()), FC.Datos.admin.ranking(claveMaster(), 6), FC.Datos.admin.ranking(claveMaster(), 7)]);
-      m.lista = lista; m.ranking = { 6: r6, 7: r7 }; m.error = null;
+      const firma = JSON.stringify([lista, r6, r7]);
+      const cambio = firma !== m.firma || m.error;
+      m.firma = firma; m.lista = lista; m.ranking = { 6: r6, 7: r7 }; m.error = null;
+      m.actualizado = new Date().toLocaleTimeString('es-PE');
+      if (!cambio && ui.vista === 'master') { const t = document.querySelector('.seccion h2 small'); if (t) t.textContent = `· se actualiza cada ${MASTER_REFRESCO / 1000} s · última: ${m.actualizado}`; return; }
       for (const id of [...m.sel]) if (!lista.some(p => p.id === id)) m.sel.delete(id);
-    } catch (e) { m.error = e.message; m.lista = m.lista || []; }
-    if (ui.vista === 'master') render();
+    } catch (e) { m.error = e.message; m.lista = m.lista || []; } finally { cargandoMaster = false; }
+    if (ui.vista === 'master' && document.activeElement?.id !== 'top-n') render();
   }
 
   async function accionMaster(el) {
@@ -584,7 +614,10 @@ FC.App = (() => {
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('modal').hidden) cerrarModal(); });
     try { P = JSON.parse(localStorage.getItem(SESION_KEY)); } catch { P = null; }
     if (P) { P.progreso = { ...progresoVacio(), ...P.progreso }; ui.acceso = 'entrar'; sincronizar(); }
-    setInterval(() => { if (P && !P.demo) sincronizar(); if (ui.vista === 'master' && esMaster() && $('caso').hidden) cargarMaster(); }, 20000);
+    setInterval(() => { if (P && !P.demo) sincronizar(); }, 20000);
+    // Monitoreo en vivo del master: refresco frecuente mientras el panel está visible
+    setInterval(() => { if (ui.vista === 'master' && esMaster() && !P?.demo && !document.hidden && $('caso').hidden) cargarMaster(); }, MASTER_REFRESCO);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && P && !P.demo) sincronizar(); });
     render();
   }
 

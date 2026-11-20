@@ -77,12 +77,12 @@ FC.Datos = (() => {
       if ((p_clave || '').length < 4) throw error('CLAVE_CORTA');
       if ((p_nombre || '').trim().length < 5) throw error('NOMBRE_CORTO');
       if (db.participantes.some(x => x.usuario === u)) throw error('USUARIO_EXISTE');
-      const p = { id: uuid(), usuario: u, clave: p_clave, nombre: p_nombre.trim(), condicion: p_condicion || 'Estudiante', progreso: {}, habilitado: [], creado: new Date().toISOString() };
+      const p = { id: uuid(), usuario: u, clave: p_clave, nombre: p_nombre.trim(), condicion: p_condicion || 'Estudiante', progreso: {}, habilitado: [], creado: new Date().toISOString(), visto: new Date().toISOString() };
       db.participantes.push(p); escribir(db);
       return json(db, p);
     },
-    async fc_entrar({ p_usuario, p_clave }) { const db = leer(); return json(db, buscar(db, p_usuario, p_clave)); },
-    async fc_guardar({ p_usuario, p_clave, p_progreso }) { const db = leer(); buscar(db, p_usuario, p_clave).progreso = p_progreso; escribir(db); },
+    async fc_entrar({ p_usuario, p_clave }) { const db = leer(); const p = buscar(db, p_usuario, p_clave); p.visto = new Date().toISOString(); escribir(db); return json(db, p); },
+    async fc_guardar({ p_usuario, p_clave, p_progreso }) { const db = leer(); const p = buscar(db, p_usuario, p_clave); p.progreso = p_progreso; p.visto = new Date().toISOString(); escribir(db); },
     async fc_enviar_resultado({ p_usuario, p_clave, p_nivel, ...r }) {
       const db = leer(); const p = buscar(db, p_usuario, p_clave);
       if (!p.habilitado.includes(p_nivel)) throw error('NO_HABILITADO');
@@ -95,7 +95,7 @@ FC.Datos = (() => {
       return db.resultados.filter(r => r.nivel === p_nivel).sort(ordenar).slice(0, 3)
         .map(r => ({ nombre: db.participantes.find(p => p.id === r.participante_id)?.nombre || '—', puntaje: r.puntaje, segundos: r.segundos }));
     },
-    async fc_admin_listar({ p_master }) { await exigirMaster(p_master); const db = leer(); return db.participantes.map(p => ({ ...json(db, p), clave: p.clave, creado: p.creado })); },
+    async fc_admin_listar({ p_master }) { await exigirMaster(p_master); const db = leer(); return db.participantes.map(p => ({ ...json(db, p), clave: p.clave, creado: p.creado, hace: p.visto ? Math.floor((Date.now() - Date.parse(p.visto)) / 1000) : null })); },
     async fc_admin_habilitar({ p_master, p_ids, p_nivel, p_valor }) {
       await exigirMaster(p_master); const db = leer();
       for (const p of db.participantes) if (p_ids.includes(p.id)) { p.habilitado = p.habilitado.filter(n => n !== p_nivel); if (p_valor) p.habilitado.push(p_nivel); }

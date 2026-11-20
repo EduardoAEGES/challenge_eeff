@@ -50,6 +50,9 @@ create table if not exists public.fc_resultados (
   unique (participante_id, nivel)
 );
 
+-- Última señal de vida de cada participante (para el monitoreo en vivo del master)
+alter table public.fc_participantes add column if not exists visto timestamptz;
+
 alter table public.fc_config enable row level security;
 alter table public.fc_participantes enable row level security;
 alter table public.fc_resultados enable row level security;
@@ -82,8 +85,8 @@ begin
   if length(coalesce(p_clave, '')) < 4 then raise exception 'CLAVE_CORTA'; end if;
   if length(trim(coalesce(p_nombre, ''))) < 5 then raise exception 'NOMBRE_CORTO'; end if;
   if exists (select 1 from fc_participantes where usuario = u) then raise exception 'USUARIO_EXISTE'; end if;
-  insert into fc_participantes (usuario, clave, nombre, condicion)
-    values (u, p_clave, trim(p_nombre), coalesce(nullif(p_condicion, ''), 'Estudiante'))
+  insert into fc_participantes (usuario, clave, nombre, condicion, visto)
+    values (u, p_clave, trim(p_nombre), coalesce(nullif(p_condicion, ''), 'Estudiante'), now())
     returning * into fila;
   return fc_json_participante(fila);
 end $$;
@@ -92,7 +95,9 @@ create or replace function public.fc_entrar(p_usuario text, p_clave text)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare fila fc_participantes;
 begin
-  select * into fila from fc_participantes where usuario = lower(trim(p_usuario)) and clave = p_clave;
+  update fc_participantes set visto = now()
+    where usuario = lower(trim(p_usuario)) and clave = p_clave
+    returning * into fila;
   if not found then raise exception 'CREDENCIALES'; end if;
   return fc_json_participante(fila);
 end $$;
@@ -100,7 +105,7 @@ end $$;
 create or replace function public.fc_guardar(p_usuario text, p_clave text, p_progreso jsonb)
 returns void language plpgsql security definer set search_path = public as $$
 begin
-  update fc_participantes set progreso = p_progreso, actualizado = now()
+  update fc_participantes set progreso = p_progreso, actualizado = now(), visto = now()
     where usuario = lower(trim(p_usuario)) and clave = p_clave;
   if not found then raise exception 'CREDENCIALES'; end if;
 end $$;
@@ -135,7 +140,8 @@ create or replace function public.fc_admin_listar(p_master text)
 returns jsonb language plpgsql stable security definer set search_path = public as $$
 begin
   if not fc_es_master(p_master) then raise exception 'MASTER'; end if;
-  return coalesce((select jsonb_agg(fc_json_participante(p) || jsonb_build_object('clave', p.clave, 'creado', p.creado) order by p.creado)
+  return coalesce((select jsonb_agg(fc_json_participante(p) || jsonb_build_object('clave', p.clave, 'creado', p.creado,
+                     'hace', case when p.visto is null then null else floor(extract(epoch from now() - p.visto))::int end) order by p.creado)
                    from fc_participantes p), '[]'::jsonb);
 end $$;
 
@@ -182,3 +188,6 @@ grant execute on function public.fc_registrar(text, text, text, text), public.fc
   public.fc_admin_borrar_resultado(text, uuid), public.fc_admin_borrar_participante(text, uuid)
   to anon, authenticated;
 revoke execute on function public.fc_es_master(text), public.fc_json_participante(fc_participantes) from anon, authenticated, public;
+
+-- Que la API de Supabase vea de inmediato las funciones nuevas
+notify pgrst, 'reload schema';
