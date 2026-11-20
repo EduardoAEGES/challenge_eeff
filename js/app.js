@@ -109,12 +109,14 @@ FC.App = (() => {
         ${registro ? '<p class="nota-acceso">📝 <b>Anota tu usuario y contraseña</b>: los necesitarás el día del reto. No uses una contraseña que uses en otros sitios: el facilitador puede verla para ayudarte si la olvidas.</p>' : ''}
         <button class="btn btn-certus btn-bloque" type="submit">${registro ? 'Crear mi cuenta' : 'Entrar'}</button>
       </form>
+      <div class="nota-acceso" style="text-align:center">🧪 ¿Solo quieres probar? Usuario <b>demo</b> · Contraseña <b>demo</b><br><button class="btn btn-blanco btn-chico" type="button" data-accion="entrar-demo" style="margin-top:8px">Entrar con usuario demo</button></div>
       <button class="enlace" type="button" data-accion="ir-master" style="align-self:center">Soy el facilitador (master)</button>
       ${FC.Datos.modo === 'local' ? '<p class="nota-acceso">Modo local: las cuentas se guardan solo en esta computadora.</p>' : ''}`;
   }
 
   async function enviarAcceso(f) {
     const usuario = f.usuario.value.trim(), clave = f.clave.value;
+    if (ui.acceso !== 'registro' && usuario.toLowerCase() === 'demo' && clave === 'demo') { ui.msg = null; iniciarDemo(); return; }
     const boton = f.querySelector('button[type=submit]');
     boton.disabled = true;
     try {
@@ -145,9 +147,13 @@ FC.App = (() => {
     P = { usuario: 'demo', clave: '', nombre: 'Participante de demostración', condicion: 'Estudiante', habilitado: [6, 7], resultados: {}, progreso: progresoVacio(), demo: true };
     ir('ruta');
   }
-  function salirDemo() { P = participanteReal; participanteReal = null; ir('master'); }
+  function salirDemo() {
+    const eraMaster = Boolean(participanteReal || esMaster());
+    P = participanteReal; participanteReal = null;
+    if (eraMaster) ir('master'); else { ui.acceso = 'entrar'; ir('ruta'); }
+  }
   const bannerDemo = () => (P?.demo ? `<div class="banner-demo"><span class="emoji">🎬</span>
-    <p>Modo demostración: todos los niveles están abiertos y nada de lo que hagas se guarda.</p>
+    <p>Modo demostración (usuario demo): todos los niveles están abiertos y nada de lo que hagas se guarda.</p>
     <button class="btn btn-blanco btn-chico" data-accion="salir-demo">Salir de la demostración</button></div>` : '');
 
   // ---------- Panel derecho ----------
@@ -548,6 +554,7 @@ FC.App = (() => {
         P = { usuario: d.usuario, clave, progreso: progresoVacio() }; aplicarServidor(d, true); guardarSesion();
         ui.nuevaCuenta = null; participantePendiente = null; ir('ruta'); return;
       }
+      case 'entrar-demo': iniciarDemo(); return;
       case 'ir-master': ir('master'); return;
       case 'volver-acceso': ir('ruta'); return;
       case 'salir-demo': salirDemo(); return;
