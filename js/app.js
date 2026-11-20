@@ -110,14 +110,12 @@ FC.App = (() => {
         ${registro ? '<p class="nota-acceso">📝 <b>Anota tu usuario y contraseña</b>: los necesitarás el día del reto. No uses una contraseña que uses en otros sitios: el facilitador puede verla para ayudarte si la olvidas.</p>' : ''}
         <button class="btn btn-certus btn-bloque" type="submit">${registro ? 'Crear mi cuenta' : 'Entrar'}</button>
       </form>
-      <div class="nota-acceso" style="text-align:center">🧪 ¿Solo quieres probar? Usuario <b>demo</b> · Contraseña <b>demo</b><br><button class="btn btn-blanco btn-chico" type="button" data-accion="entrar-demo" style="margin-top:8px">Entrar con usuario demo</button></div>
       <button class="enlace" type="button" data-accion="ir-master" style="align-self:center">Soy el facilitador (master)</button>
       ${FC.Datos.modo === 'local' ? '<p class="nota-acceso">Modo local: las cuentas se guardan solo en esta computadora.</p>' : ''}`;
   }
 
   async function enviarAcceso(f) {
     const usuario = f.usuario.value.trim(), clave = f.clave.value;
-    if (ui.acceso !== 'registro' && usuario.toLowerCase() === 'demo' && clave === 'demo') { ui.msg = null; iniciarDemo(); return; }
     const boton = f.querySelector('button[type=submit]');
     boton.disabled = true;
     try {
@@ -148,13 +146,9 @@ FC.App = (() => {
     P = { usuario: 'demo', clave: '', nombre: 'Participante de demostración', condicion: 'Estudiante', habilitado: [6, 7], resultados: {}, progreso: progresoVacio(), demo: true };
     ir('ruta');
   }
-  function salirDemo() {
-    const eraMaster = Boolean(participanteReal || esMaster());
-    P = participanteReal; participanteReal = null;
-    if (eraMaster) ir('master'); else { ui.acceso = 'entrar'; ir('ruta'); }
-  }
+  function salirDemo() { P = participanteReal; participanteReal = null; ir('master'); }
   const bannerDemo = () => (P?.demo ? `<div class="banner-demo"><span class="emoji">🎬</span>
-    <p>Modo demostración (usuario demo): todos los niveles están abiertos y nada de lo que hagas se guarda.</p>
+    <p>Modo demostración (master): todos los niveles están abiertos y nada de lo que hagas se guarda.</p>
     <button class="btn btn-blanco btn-chico" data-accion="salir-demo">Salir de la demostración</button></div>` : '');
 
   // ---------- Panel derecho ----------
@@ -438,7 +432,7 @@ FC.App = (() => {
       <div class="seccion"><h2>👩🏻‍🏫 Nivel 5 · Clase guiada</h2>
         <div class="tarjeta"><p class="muted" style="font-weight:600;margin-bottom:10px">Proyecta y resuelve cada subnivel con la clase. No hay vidas ni puntaje; el comodín se puede usar libremente para mostrar cómo funciona.</p>
           <div class="codigos">${FC.NIVELES.find(n => n.subniveles).subniveles.map(sb => `<button class="btn btn-azul btn-chico" data-accion="guiado-master" data-id="${sb.id}">${sb.icono} ${esc(sb.titulo)}</button>`).join('')}
-          <button class="btn btn-certus btn-chico" data-accion="demo">🎬 Demostración completa</button></div></div></div>
+          <button class="btn btn-certus btn-chico" data-accion="demo">🎬 Entrar como usuario demo</button></div></div></div>
 
       <div class="seccion"><h2>👥 Participantes registrados (${lista.length})</h2>
         <div class="tarjeta">
@@ -595,7 +589,6 @@ FC.App = (() => {
         P = { usuario: d.usuario, clave, progreso: progresoVacio() }; aplicarServidor(d, true); guardarSesion();
         ui.nuevaCuenta = null; participantePendiente = null; ir('ruta'); return;
       }
-      case 'entrar-demo': iniciarDemo(); return;
       case 'ir-master': ir('master'); return;
       case 'volver-acceso': ir('ruta'); return;
       case 'salir-demo': salirDemo(); return;
