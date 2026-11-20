@@ -52,7 +52,7 @@ FC.Caso = (() => {
   function pintarReloj() {
     if (!s) return;
     const t = segundos();
-    dom.reloj.textContent = `⏱️ ${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+    dom.reloj.innerHTML = `${FC.ico('reloj')} ${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
   }
 
   const guardar = () => s.opciones.alGuardar?.(s.estado);
@@ -67,14 +67,14 @@ FC.Caso = (() => {
     const ind = id => sim.ind.find(i => i.id === id);
     const fila = (nombre, valor, i) => `<div class="kpi"><small>${nombre}</small><b>${i ? dot(i.estado) : ''}${valor}</b></div>`;
     return `<aside class="proyeccion">
-      <h3>📈 Proyección al cierre del año</h3>
+      <h3>${FC.ico('tendencia')} Proyección al cierre del año</h3>
       ${oculta ? '<div class="nota-oculta">La proyección se actualizará cuando respondas el análisis de tu última decisión.</div>' : ''}
       ${fila('Efectivo', fmt(sim.fin.caja))}
       ${fila('Utilidad neta', fmt(sim.er.utilidadNeta))}
       ${fila('Liquidez corriente', fmtInd(ind('liquidez')), ind('liquidez'))}
       ${fila('Endeudamiento', fmtInd(ind('endeudamiento')), ind('endeudamiento'))}
       ${fila('ROE', fmtInd(ind('roe')), ind('roe'))}
-      ${sim.sobregiro ? `<div class="nota-oculta" style="color:var(--error-texto)">🚨 Sobregiro bancario proyectado de ${fmt(sim.sobregiro)}</div>` : ''}
+      ${sim.sobregiro ? `<div class="nota-oculta" style="color:var(--error-texto)">${FC.ico('alerta')} Sobregiro bancario proyectado de ${fmt(sim.sobregiro)}</div>` : ''}
       <p class="politicas">Ventas: ${POL_VENTAS[sim.politicas.ventas].nombre}<br>Compras: ${POL_COMPRAS[sim.politicas.compras].nombre}</p>
       <button class="btn btn-blanco btn-chico" id="caso-ver-estados">Ver estados financieros</button>
       <p class="aviso-caso">${esc(s.caso.aviso || '')}</p>
@@ -103,16 +103,16 @@ FC.Caso = (() => {
       const n = tarjeta.nodo;
       if (n.tipo === 'escena') {
         html = `<div class="contenido">
-          <div class="ej-etiqueta">🎬 ${esc(n.titulo || 'Escena')}</div>
+          <div class="ej-etiqueta">${FC.ico('play')} ${esc(n.titulo || 'Escena')}</div>
           <div class="escena"><div class="personaje">${n.personaje}</div><div class="burbuja"><small>${esc(n.nombre)}</small>${esc(n.texto)}</div></div>
-          <div class="tarjeta"><p style="font-weight:600;line-height:1.55">${s.modo === 'guiado' ? 'Clase guiada: aquí no hay vidas ni puntaje.' : `Tienes <b>${FC.VIDAS_COMPETENCIA} vidas</b> ❤️ y <b>1 comodín</b> 🃏. Cada decisión es <b>definitiva</b>. Pierdes una vida por cada respuesta incorrecta o decisión de alto riesgo. Gana el mejor puntaje; el tiempo solo desempata.`}</p></div>
+          <div class="tarjeta"><p style="font-weight:600;line-height:1.55">${s.modo === 'guiado' ? 'Clase guiada: aquí no hay vidas ni puntaje.' : `Tienes <b>${FC.VIDAS_COMPETENCIA} vidas</b> y <b>1 comodín</b>. Cada decisión es <b>definitiva</b>. Pierdes una vida por cada respuesta incorrecta o decisión de alto riesgo. Gana el mejor puntaje; el tiempo solo desempata.`}</p></div>
           <p class="aviso-caso">${esc(s.caso.aviso || '')}</p>
         </div>`;
       } else {
         html = `<div class="contenido">
-          <div class="ej-etiqueta">💡 Explicación</div>
+          <div class="ej-etiqueta">${FC.ico('foco')} Explicación</div>
           <h1 class="ej-pregunta">${n.titulo}</h1>
-          <div class="teoria-cabecera"><div class="mascota">👩🏻‍🏫</div><div class="burbuja">${n.intro}</div></div>
+          <div class="teoria-cabecera"><div class="mascota">${FC.ico('pizarra')}</div><div class="burbuja">${n.intro}</div></div>
           <div class="teoria-puntos">${n.puntos.map(p => `<div class="tarjeta teoria-punto"><div class="emoji">${p.icono}</div><div><h4>${p.titulo}</h4><p>${p.texto}</p></div></div>`).join('')}</div>
         </div>`;
       }
@@ -122,7 +122,7 @@ FC.Caso = (() => {
       s.fase = 'pregunta';
       const n = s.caso.nodos[r.pendiente];
       const opciones = FC.Motor.opcionesDe(n);
-      const etiqueta = { decision: '🧭 Decisión', analisis: '🔍 Analiza tu decisión', pregunta: '📘 Pregunta de concepto' }[n.tipo];
+      const etiqueta = { decision: FC.ico('brujula') + ' Decisión', analisis: FC.ico('lupa') + ' Analiza tu decisión', pregunta: FC.ico('libro') + ' Pregunta de concepto' }[n.tipo];
       const texto = n.texto || (n.tipo === 'analisis' ? 'Revisa lo que acabas de decidir antes de seguir.' : 'Una pregunta rápida antes de seguir.');
       const narrador = n.personaje ? `<div class="escena"><div class="personaje">${n.personaje}</div><div class="burbuja"><small>${esc(n.nombre)}</small>${esc(texto)}</div></div>` : '';
       html = `<div class="contenido">
@@ -154,7 +154,7 @@ FC.Caso = (() => {
 
   async function usarComodin() {
     if (!s || s.fase !== 'pregunta' || !comodinDisponible()) return;
-    if (s.modo !== 'guiado' && !await FC.confirmar({ icono: '🃏', titulo: '¿Usar tu comodín?', texto: 'Tienes uno solo en este nivel. Te ayudará en esta pregunta.', aceptar: 'Usar comodín', cancelar: 'Guardarlo', tono: 'dorado' })) return;
+    if (s.modo !== 'guiado' && !await FC.confirmar({ icono: FC.ico('comodin'), titulo: '¿Usar tu comodín?', texto: 'Tienes uno solo en este nivel. Te ayudará en esta pregunta.', aceptar: 'Usar comodín', cancelar: 'Guardarlo', tono: 'dorado' })) return;
     if (!s || s.fase !== 'pregunta') return;
     const r = recorrido();
     const nodo = s.caso.nodos[r.pendiente];
@@ -170,14 +170,14 @@ FC.Caso = (() => {
           <td class="num">${dot(ind('liquidez').estado)}${fmtInd(ind('liquidez'))}</td><td class="num">${dot(ind('endeudamiento').estado)}${fmtInd(ind('endeudamiento'))}</td>
           <td class="num">${dot(ind('roe').estado)}${fmtInd(ind('roe'))}</td></tr>`;
       }).join('');
-      ayuda.innerHTML = `<div class="comodin-caja"><b>🃏 Comodín: simulación de cada opción al cierre del año</b>
+      ayuda.innerHTML = `<div class="comodin-caja"><b>${FC.ico('comodin')} Comodín: simulación de cada opción al cierre del año</b>
         <div class="table-wrap"><table><thead><tr><th>Opción</th><th class="num">Efectivo</th><th class="num">Utilidad</th><th class="num">Liquidez</th><th class="num">Endeud.</th><th class="num">ROE</th></tr></thead><tbody>${filas}</tbody></table></div>
         <small>Ojo: algunas opciones tienen riesgos que no se ven en los números.</small></div>`;
     } else {
       const correcta = nodo.tipo === 'analisis' ? FC.Motor.respuestaAnalisis(nodo, r.previa, r.actual) : nodo.correcta;
       seleccionar(correcta);
       dom.cuerpo.querySelectorAll('.opcion')[correcta].classList.add('comodin');
-      ayuda.innerHTML = '<div class="comodin-caja"><b>🃏 Comodín usado:</b> la respuesta correcta quedó marcada. Confírmala para continuar.</div>';
+      ayuda.innerHTML = '<div class="comodin-caja"><b>' + FC.ico('comodin') + ' Comodín usado:</b> la respuesta correcta quedó marcada. Confírmala para continuar.</div>';
     }
   }
 
@@ -209,8 +209,8 @@ FC.Caso = (() => {
     if (paso.error && s.vidas != null) perderVida(r);
     if (nodo.tipo === 'decision') {
       const op = nodo.opciones[s.seleccion];
-      if (paso.error) feedback('incorrecto', '⚠️', s.vidas != null ? 'Decisión de alto riesgo · −1 ❤️' : 'Decisión de alto riesgo', `${esc(op.consecuencia || '')}<br><b>Por qué:</b> ${esc(op.porque || '')}`);
-      else { FC.Sonido.tap(); feedback('neutro', '📌', 'Decisión registrada', esc(op.consecuencia || '')); }
+      if (paso.error) feedback('incorrecto', FC.ico('alerta'), s.vidas != null ? 'Decisión de alto riesgo · −1 vida' : 'Decisión de alto riesgo', `${esc(op.consecuencia || '')}<br><b>Por qué:</b> ${esc(op.porque || '')}`);
+      else { FC.Sonido.tap(); feedback('neutro', FC.ico('check'), 'Decisión registrada', esc(op.consecuencia || '')); }
     } else {
       const ok = paso.acierto;
       if (ok) FC.Sonido.correcto();
@@ -222,8 +222,8 @@ FC.Caso = (() => {
       } else {
         texto = `${ok ? '' : `La respuesta correcta era <b>${esc(nodo.opciones[paso.correcta])}</b>. `}${esc(nodo.explicacion || '')}`;
       }
-      const titulo = ok ? (s.modo === 'guiado' ? '¡Correcto!' : '¡Correcto! +50 puntos') : (s.vidas != null ? 'No es correcto · −1 ❤️' : 'No es correcto');
-      feedback(ok ? 'correcto' : 'incorrecto', ok ? '✅' : '❌', titulo, texto);
+      const titulo = ok ? (s.modo === 'guiado' ? '¡Correcto!' : '¡Correcto! +50 puntos') : (s.vidas != null ? 'No es correcto · −1 vida' : 'No es correcto');
+      feedback(ok ? 'correcto' : 'incorrecto', FC.ico(ok ? 'check' : 'equis'), titulo, texto);
     }
     pintarVidas(r);
     dom.boton.textContent = r.terminado ? (r.sinVidas ? 'Ver resultado' : 'Ver resultado') : 'Continuar';
@@ -236,7 +236,7 @@ FC.Caso = (() => {
     dom.vidas.classList.remove('pierde'); void dom.vidas.offsetWidth; dom.vidas.classList.add('pierde');
     const flash = document.createElement('div');
     flash.className = 'flash-error';
-    flash.innerHTML = `<span>−1 ❤️</span>`;
+    flash.innerHTML = `<span>−1 ${FC.ico('corazon')}</span>`;
     document.body.append(flash);
     setTimeout(() => flash.remove(), 1100);
     if (r.vidas === 0) setTimeout(() => FC.Sonido.incorrecto(), 400);
@@ -244,7 +244,7 @@ FC.Caso = (() => {
 
   function feedback(tipo, icono, titulo, texto) {
     dom.pie.classList.add(tipo);
-    dom.fbIcono.textContent = icono;
+    dom.fbIcono.innerHTML = icono;
     dom.fbTitulo.textContent = titulo;
     dom.fbTexto.innerHTML = texto;
     dom.feedback.hidden = false;
@@ -297,16 +297,16 @@ FC.Caso = (() => {
     const t = `${Math.floor(seg / 60)}:${String(seg % 60).padStart(2, '0')}`;
     dom.cuerpo.innerHTML = `<div class="contenido" style="width:min(980px,100%)">
       <div class="final${r.sinVidas ? ' mal' : ''}" style="padding:0">
-        <div class="mascota">${r.sinVidas ? '💔' : guiado ? '👩🏻‍🏫' : '🏁'}</div>
+        <div class="mascota">${FC.ico(r.sinVidas ? 'corazonRoto' : guiado ? 'pizarra' : 'bandera')}</div>
         <h1>${r.sinVidas ? 'Te quedaste sin vidas' : guiado ? '¡Subnivel completado!' : '¡Caso completado!'}</h1>
         <p>${esc(s.caso.titulo)}${r.sinVidas ? '<br>El caso terminó aquí y se calificó con las decisiones que alcanzaste a tomar.' : ''}${s.modo === 'prueba' ? '<br><b>Modo prueba: este resultado no se guarda.</b>' : ''}</p>
         ${guiado ? '' : `<div class="resultados">
-          <div class="resultado certus"><small>Puntaje</small><b>🏆 ${p.total}</b></div>
-          <div class="resultado azul"><small>Tiempo</small><b>⏱️ ${t}</b></div>
-          <div class="resultado"><small>Vidas</small><b>❤️ ${r.vidas}</b></div>
-          <div class="resultado verde"><small>Aciertos</small><b>🎯 ${p.aciertos}/${p.preguntas}</b></div>
+          <div class="resultado certus"><small>Puntaje</small><b>${FC.ico('trofeo')} ${p.total}</b></div>
+          <div class="resultado azul"><small>Tiempo</small><b>${FC.ico('reloj')} ${t}</b></div>
+          <div class="resultado"><small>Vidas</small><b>${FC.ico('corazon')} ${r.vidas}</b></div>
+          <div class="resultado verde"><small>Aciertos</small><b>${FC.ico('diana')} ${p.aciertos}/${p.preguntas}</b></div>
         </div>`}
-        ${s.opciones.podio ? '<button class="btn btn-certus" id="caso-ver-podio">🏆 Ver podio de la final</button>' : ''}
+        ${s.opciones.podio ? `<button class="btn btn-certus" id="caso-ver-podio">${FC.ico('trofeo')} Ver podio de la final</button>` : ''}
         <p class="muted" id="caso-envio" style="font-size:14px"></p>
       </div>
       <div class="grid-2">
@@ -336,7 +336,7 @@ FC.Caso = (() => {
 
   async function salir() {
     if (!s) return;
-    if (s.fase !== 'cerrar' && s.modo === 'competencia' && !await FC.confirmar({ icono: '⏱️', titulo: '¿Salir del caso?', texto: 'Tu avance queda guardado, pero el cronómetro sigue corriendo.', aceptar: 'Salir', cancelar: 'Seguir jugando', tono: 'rojo' })) return;
+    if (s.fase !== 'cerrar' && s.modo === 'competencia' && !await FC.confirmar({ icono: FC.ico('reloj'), titulo: '¿Salir del caso?', texto: 'Tu avance queda guardado, pero el cronómetro sigue corriendo.', aceptar: 'Salir', cancelar: 'Seguir jugando', tono: 'rojo' })) return;
     if (!s) return;
     cerrar();
   }

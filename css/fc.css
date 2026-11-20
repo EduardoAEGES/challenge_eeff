@@ -428,3 +428,48 @@ table.diario tr.hl-row td { background: var(--sel-fondo); }
 :root[data-theme="dark"] .dlg-nota { background: #3a2f0c; color: #f3d27a; }
 @media (max-width: 420px) { .dlg-botones { grid-template-columns: 1fr; } .dlg-botones .btn[data-r="1"] { order: -1; } }
 @media (prefers-reduced-motion: reduce) { .dlg-caja, .dlg-icono, .dlg-items li { animation: none; } }
+
+/* ---------- Iconos lineales ---------- */
+.ico { width: 1.15em; height: 1.15em; flex: none; display: inline-block; vertical-align: -0.2em; }
+.ico-relleno { fill: currentColor; }
+h1 .ico, h2 .ico, h3 .ico { color: var(--certus); }
+.t-rojo { color: var(--rojo); } .t-verde { color: var(--verde-oscuro); } .t-dorado { color: var(--dorado-oscuro); } .t-azul { color: var(--azul); } .t-morado { color: var(--morado); }
+.nav button span { display: grid; place-items: center; width: 28px; height: 28px; font-size: 24px; color: var(--certus); }
+.nav button.activo span { color: var(--sel-texto); }
+.nav button span .ico { width: 24px; height: 24px; vertical-align: 0; }
+.stat-ic { flex: none; width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; background: color-mix(in srgb, currentColor 14%, transparent); }
+.stat-ic .ico { width: 21px; height: 21px; vertical-align: 0; }
+.stat > div { min-width: 0; }
+.vidas .ico, .vidas-caso .ico { fill: currentColor; }
+.btn .ico { width: 1.2em; height: 1.2em; }
+.btn-icono .ico { width: 18px; height: 18px; vertical-align: 0; }
+.nodo .ico { width: 34px; height: 34px; vertical-align: 0; stroke-width: 2.2; }
+.nodo.examen .ico { width: 36px; height: 36px; }
+.unidad-cabecera .emoji .ico, .caso-tarjeta .emoji .ico, .portada .emoji .ico { width: 1em; height: 1em; vertical-align: 0; stroke-width: 1.8; }
+.caso-tarjeta .emoji { color: var(--certus); display: grid; place-items: center; width: 84px; height: 84px; border-radius: 22px; background: var(--certus-claro); font-size: 46px; }
+.banner-demo .emoji .ico { width: 30px; height: 30px; vertical-align: 0; }
+.mascota .ico { width: 1em; height: 1em; color: var(--certus); stroke-width: 1.8; }
+.dlg-icono .ico { width: 36px; height: 36px; color: #fff; vertical-align: 0; }
+.dlg-item-ic { color: var(--c); }
+.dlg-item-ic .ico { width: 22px; height: 22px; vertical-align: 0; }
+.actividad { display: inline-flex; align-items: center; gap: 6px; }
+.actividad b { display: inline-flex; align-items: center; gap: 6px; }
+.chip .ico { width: 14px; height: 14px; vertical-align: -2px; }
+/* Puntos de estado en vivo */
+.punto { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: 1px; }
+.punto.verde { background: #22c55e; box-shadow: 0 0 0 3px rgba(34, 197, 94, .22); animation: latido 1.8s ease-in-out infinite; }
+.punto.ambar { background: #f59e0b; }
+.punto.gris { background: #a3adb5; }
+/* Medallas 1.º, 2.º, 3.º */
+.medalla-ic { display: inline-grid; place-items: center; width: 1.6em; height: 1.6em; border-radius: 50%; font-weight: 900; font-size: .8em; color: #fff; vertical-align: middle;
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .18), 0 0 0 2px rgba(255, 255, 255, .6); }
+.medalla-ic.m1 { background: linear-gradient(145deg, #f7d774, #c9971c); }
+.medalla-ic.m2 { background: linear-gradient(145deg, #e3e7ec, #98a2ad); }
+.medalla-ic.m3 { background: linear-gradient(145deg, #e7a874, #a5622d); }
+.premios { line-height: 2.1; }
+.podio .medalla .medalla-ic, .escalon .medalla .medalla-ic { font-size: 28px; }
+/* Comodines por nivel */
+.comodin-n { display: inline-block; padding: 2px 8px; margin: 2px 2px 0 0; border-radius: 8px; font-size: 12px; font-weight: 900; background: var(--ok-fondo); color: var(--ok-texto); }
+.comodin-n.usado { background: var(--bloqueado); color: var(--texto-suave); text-decoration: line-through; }
+.feedback-icono .ico { width: 32px; height: 32px; vertical-align: 0; stroke-width: 2.4; }
+.flash-error .ico { width: 1em; height: 1em; fill: currentColor; vertical-align: -0.12em; }

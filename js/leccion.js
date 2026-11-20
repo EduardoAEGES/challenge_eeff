@@ -24,7 +24,7 @@ FC.Leccion = (() => {
     dom.pista.addEventListener('click', mostrarPista);
     dom.comodin.addEventListener('click', usarComodin);
     $('lec-salir').addEventListener('click', async () => {
-      if (!s || s.fase === 'fin' || await FC.confirmar({ icono: '🚪', titulo: '¿Salir de la lección?', texto: 'Perderás el avance de esta lección. Los corazones perdidos no se recuperan.', aceptar: 'Salir', cancelar: 'Seguir aprendiendo', tono: 'rojo' })) cerrar();
+      if (!s || s.fase === 'fin' || await FC.confirmar({ icono: FC.ico('salir'), titulo: '¿Salir de la lección?', texto: 'Perderás el avance de esta lección. Los corazones perdidos no se recuperan.', aceptar: 'Salir', cancelar: 'Seguir aprendiendo', tono: 'rojo' })) cerrar();
     });
     document.addEventListener('keydown', e => {
       if (!s || dom.raiz.hidden || !$('modal').hidden) return;
@@ -51,7 +51,7 @@ FC.Leccion = (() => {
     }
     const info = opciones.repaso ? null : FC.leccionPorId(id);
     s = { id, info, opciones, cola: items.slice(), total: items.length, hechos: 0, aciertos: 0, errores: 0, inicio: Date.now(), fase: 'respondiendo', actual: null };
-    dom.titulo.textContent = opciones.repaso ? '🔁 Sesión de repaso' : `Nivel ${info.nivel.n} · ${info.leccion.titulo}${opciones.prueba ? ' · MODO PRUEBA' : ''}`;
+    dom.titulo.textContent = opciones.repaso ? 'Sesión de repaso' : `Nivel ${info.nivel.n} · ${info.leccion.titulo}${opciones.prueba ? ' · MODO PRUEBA' : ''}`;
     dom.raiz.hidden = false; dom.pie.hidden = false;
     document.body.style.overflow = 'hidden';
     cabecera(); siguiente();
@@ -88,7 +88,7 @@ FC.Leccion = (() => {
     s.pistaVista = true;
     const caja = document.createElement('div');
     caja.className = 'pista-caja';
-    caja.innerHTML = `💡 <b>Pista:</b> ${s.ej.pista}`;
+    caja.innerHTML = `${FC.ico('foco')} <b>Pista:</b> ${s.ej.pista}`;
     dom.cuerpo.querySelector('.contenido')?.append(caja);
     dom.pista.hidden = true;
   }
@@ -96,14 +96,14 @@ FC.Leccion = (() => {
   async function usarComodin() {
     if (!s || s.fase !== 'respondiendo' || !s.actual.resolver) return;
     if (!s.opciones.prueba && !s.opciones.comodin?.disponible()) return;
-    if (!s.opciones.prueba && !await FC.confirmar({ icono: '🃏', titulo: '¿Usar tu comodín?', texto: 'Tienes uno solo en este nivel. Resolverá este ejercicio por ti.', aceptar: 'Usar comodín', cancelar: 'Guardarlo', tono: 'dorado' })) return;
+    if (!s.opciones.prueba && !await FC.confirmar({ icono: FC.ico('comodin'), titulo: '¿Usar tu comodín?', texto: 'Tienes uno solo en este nivel. Resolverá este ejercicio por ti.', aceptar: 'Usar comodín', cancelar: 'Guardarlo', tono: 'dorado' })) return;
     if (!s || s.fase !== 'respondiendo' || !s.actual.resolver) return;
     if (!s.opciones.prueba) s.opciones.comodin.usar();
     s.actual.resolver();
     dom.comodin.hidden = true;
     const caja = document.createElement('div');
     caja.className = 'pista-caja';
-    caja.innerHTML = '🃏 <b>Comodín usado:</b> la respuesta correcta ya está marcada. Léela con atención antes de comprobar.';
+    caja.innerHTML = FC.ico('comodin') + ' <b>Comodín usado:</b> la respuesta correcta ya está marcada. Léela con atención antes de comprobar.';
     dom.cuerpo.querySelector('.contenido')?.append(caja);
     FC.Sonido.comodin();
     refrescar();
@@ -134,7 +134,7 @@ FC.Leccion = (() => {
       if (!sinPerdida()) s.opciones.perderCorazon();
       golpe();
       const teoria = teoriasDe(s.item.origen)[0];
-      const repasa = teoria ? `<br><span class="repasa">📖 Repasa la tarjeta <b>«${teoria.titulo}»</b>. <button type="button" class="enlace" id="lec-ver-teoria">Ver teoría</button></span>` : '';
+      const repasa = teoria ? `<br><span class="repasa">${FC.ico('libro')} Repasa la tarjeta <b>«${teoria.titulo}»</b>. <button type="button" class="enlace" id="lec-ver-teoria">Ver teoría</button></span>` : '';
       feedback(false, 'Por qué no es correcto', `Respuesta correcta: <b>${solucion}</b>${s.ej.explain ? '<br>' + s.ej.explain : ''}${repasa}`);
       $('lec-ver-teoria')?.addEventListener('click', () => verTeoria(s.item.origen));
     }
@@ -157,7 +157,7 @@ FC.Leccion = (() => {
 
   function feedback(ok, titulo, texto) {
     dom.pie.classList.add(ok ? 'correcto' : 'incorrecto');
-    dom.fbIcono.textContent = ok ? '✅' : '❌';
+    dom.fbIcono.innerHTML = FC.ico(ok ? 'check' : 'equis');
     dom.fbTitulo.textContent = titulo;
     dom.fbTexto.innerHTML = texto || '';
     dom.feedback.hidden = false;
@@ -178,18 +178,18 @@ FC.Leccion = (() => {
     if (aprobada) { FC.Sonido.completado(); confeti(); } else FC.Sonido.incorrecto();
 
     dom.pie.hidden = true; dom.barra.style.width = '100%';
-    const titulo = repaso ? '¡Repaso completado! +2 ❤️' : !aprobada ? 'Examen no aprobado' : examen ? `¡Nivel ${s.info.nivel.n} superado!` : perfecta ? '¡Lección perfecta!' : '¡Lección completada!';
+    const titulo = repaso ? '¡Repaso completado! +2 corazones' : !aprobada ? 'Examen no aprobado' : examen ? `¡Nivel ${s.info.nivel.n} superado!` : perfecta ? '¡Lección perfecta!' : '¡Lección completada!';
     const texto = repaso ? 'Recuperaste 2 corazones. Ya puedes volver a tus lecciones.'
       : !aprobada ? `Necesitas al menos ${APROBAR_EXAMEN} % de precisión para pasar al siguiente nivel. Repasa las lecciones y vuelve a intentarlo.`
       : s.info.leccion.titulo;
     dom.cuerpo.innerHTML = `<div class="final${aprobada ? '' : ' mal'}">
-      <div class="mascota">${repaso ? '💖' : !aprobada ? '📚' : examen ? '🏆' : '🦙'}</div>
+      <div class="mascota">${FC.ico(repaso ? 'corazon' : !aprobada ? 'libro' : examen ? 'trofeo' : 'insignia')}</div>
       <h1>${titulo}</h1>
       <p>${texto}${s.opciones.prueba ? '<br><b>Modo prueba: este resultado no se guarda.</b>' : ''}</p>
       <div class="resultados">
-        <div class="resultado"><small>XP</small><b>⚡ ${xp}</b></div>
-        <div class="resultado verde"><small>${perfecta ? 'Perfecta' : 'Precisión'}</small><b>🎯 ${precision}%</b></div>
-        <div class="resultado azul"><small>Tiempo</small><b>⏱️ ${tiempo}</b></div>
+        <div class="resultado"><small>XP</small><b>${FC.ico('rayo')} ${xp}</b></div>
+        <div class="resultado verde"><small>${perfecta ? 'Perfecta' : 'Precisión'}</small><b>${FC.ico('diana')} ${precision}%</b></div>
+        <div class="resultado azul"><small>Tiempo</small><b>${FC.ico('reloj')} ${tiempo}</b></div>
       </div>
       <div class="final-acciones"><button class="btn btn-bloque" id="lec-final">Continuar</button></div>
     </div>`;
@@ -202,11 +202,11 @@ FC.Leccion = (() => {
     s.fase = 'fin';
     dom.pie.hidden = true;
     dom.cuerpo.innerHTML = `<div class="final mal">
-      <div class="mascota">💔</div>
+      <div class="mascota">${FC.ico('corazonRoto')}</div>
       <h1>Te quedaste sin corazones</h1>
       <p>Equivocarse es parte de aprender. Haz una sesión corta de repaso para recuperar <b>2 corazones</b> y vuelve a intentarlo.</p>
       <div class="final-acciones">
-        <button class="btn btn-bloque" id="lec-repaso">🔁 Ir a la sesión de repaso</button>
+        <button class="btn btn-bloque" id="lec-repaso">${FC.ico('repetir')} Ir a la sesión de repaso</button>
         <button class="btn btn-blanco btn-bloque" id="lec-volver">Volver a la ruta</button>
       </div>
     </div>`;

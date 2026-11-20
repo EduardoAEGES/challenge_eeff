@@ -19,7 +19,7 @@ FC.confirmar = (() => {
       <div class="dlg-caja" role="alertdialog" aria-modal="true" aria-labelledby="dlg-t">
         <div class="dlg-cab">
           ${o.cabecera ? `<span class="dlg-etiqueta">${esc(o.cabecera)}</span>` : ''}
-          <div class="dlg-icono">${o.icono || '❓'}</div>
+          <div class="dlg-icono">${o.icono || FC.ico?.('pregunta') || '?'}</div>
           <h2 id="dlg-t">${esc(o.titulo || '¿Continuar?')}</h2>
           ${o.texto ? `<p>${esc(o.texto)}</p>` : ''}
         </div>
