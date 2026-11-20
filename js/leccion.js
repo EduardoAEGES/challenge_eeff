@@ -23,8 +23,8 @@ FC.Leccion = (() => {
     dom.boton.addEventListener('click', accion);
     dom.pista.addEventListener('click', mostrarPista);
     dom.comodin.addEventListener('click', usarComodin);
-    $('lec-salir').addEventListener('click', () => {
-      if (!s || s.fase === 'fin' || confirm('Si sales ahora perderás el avance de esta lección (los corazones perdidos no se recuperan). ¿Salir?')) cerrar();
+    $('lec-salir').addEventListener('click', async () => {
+      if (!s || s.fase === 'fin' || await FC.confirmar({ icono: '🚪', titulo: '¿Salir de la lección?', texto: 'Perderás el avance de esta lección. Los corazones perdidos no se recuperan.', aceptar: 'Salir', cancelar: 'Seguir aprendiendo', tono: 'rojo' })) cerrar();
     });
     document.addEventListener('keydown', e => {
       if (!s || dom.raiz.hidden || !$('modal').hidden) return;
@@ -93,10 +93,11 @@ FC.Leccion = (() => {
     dom.pista.hidden = true;
   }
 
-  function usarComodin() {
+  async function usarComodin() {
     if (!s || s.fase !== 'respondiendo' || !s.actual.resolver) return;
     if (!s.opciones.prueba && !s.opciones.comodin?.disponible()) return;
-    if (!s.opciones.prueba && !confirm('🃏 Tienes un solo comodín en este nivel. Resolverá este ejercicio por ti. ¿Usarlo ahora?')) return;
+    if (!s.opciones.prueba && !await FC.confirmar({ icono: '🃏', titulo: '¿Usar tu comodín?', texto: 'Tienes uno solo en este nivel. Resolverá este ejercicio por ti.', aceptar: 'Usar comodín', cancelar: 'Guardarlo', tono: 'dorado' })) return;
+    if (!s || s.fase !== 'respondiendo' || !s.actual.resolver) return;
     if (!s.opciones.prueba) s.opciones.comodin.usar();
     s.actual.resolver();
     dom.comodin.hidden = true;

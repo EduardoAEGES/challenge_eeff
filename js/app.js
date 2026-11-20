@@ -134,8 +134,8 @@ FC.App = (() => {
   }
   let participantePendiente = null;
 
-  function cerrarSesion() {
-    if (!confirm('¿Cerrar sesión en esta computadora?')) return;
+  async function cerrarSesion() {
+    if (!await FC.confirmar({ icono: '👋', titulo: '¿Cerrar sesión?', texto: 'Tu avance queda guardado. Podrás entrar de nuevo con tu usuario y contraseña.', aceptar: 'Cerrar sesión', cancelar: 'Seguir aquí' })) return;
     P = null;
     try { localStorage.removeItem(SESION_KEY); } catch { /* */ }
     ui.acceso = 'entrar';
@@ -319,12 +319,23 @@ FC.App = (() => {
     });
   }
 
-  function abrirCaso(n) {
+  async function abrirCaso(n) {
     if (!habilitado(n)) return;
     const nv = FC.NIVELES.find(x => x.n === n);
     const c = P.demo ? {} : casoLocal(n);
     const yaTermino = Boolean(resultadoCaso(n)) && !P.demo;
-    if (!c.estado && !yaTermino && !confirm(`Vas a iniciar el nivel ${n} (${nv.etapa}).\n\n• Un solo intento y ${FC.VIDAS_COMPETENCIA} vidas.\n• El cronómetro empieza ahora y no se detiene.\n• Cada decisión es definitiva.\n• Tienes 1 comodín.\n\n¿Comenzar?`)) return;
+    if (!c.estado && !yaTermino && !await FC.confirmar({
+      cabecera: `Nivel ${n} · ${nv.etapa}`, icono: nv.icono || '🏁', titulo: nv.titulo, texto: 'Lee las reglas antes de empezar.',
+      tono: n === 7 ? 'dorado' : 'certus',
+      items: [
+        ['🎯', 'Un solo intento', 'Tu primer recorrido es el que cuenta para el ranking.'],
+        ['❤️', `${FC.VIDAS_COMPETENCIA} vidas`, 'Cada decisión equivocada te quita una.'],
+        ['⏱️', 'El cronómetro no se detiene', 'Empieza ahora y sigue aunque salgas del caso.'],
+        ['🃏', '1 comodín', 'Úsalo en la pregunta que más te cueste.']
+      ],
+      nota: 'Cada decisión es definitiva: piensa antes de responder.',
+      aceptar: '¡Comenzar!', cancelar: 'Todavía no'
+    })) return;
     if (!c.estado) { c.estado = { elecciones: [], inicio: Date.now(), escenas: [], comodinUsado: false }; guardarP(); }
     FC.Caso.abrir({
       casoId: nv.caso, modo: 'competencia', etiqueta: `Nivel ${n} · ${nv.etapa} · ${nv.titulo}${P.demo ? ' · DEMOSTRACIÓN' : ''}`,
@@ -495,18 +506,18 @@ FC.App = (() => {
       }
       case 'habilitar': {
         const valor = el.dataset.v === '1';
-        if (!confirm(`¿${valor ? 'Habilitar' : 'Quitar'} el nivel ${n} a ${m.sel.size} participante(s)?`)) return;
+        if (!await FC.confirmar({ icono: valor ? '🔓' : '🔒', titulo: `¿${valor ? 'Habilitar' : 'Quitar'} el nivel ${n}?`, texto: `Se aplicará a ${m.sel.size} participante(s) seleccionado(s).`, aceptar: valor ? 'Habilitar' : 'Quitar', tono: valor ? 'certus' : 'rojo' })) return;
         try { await FC.Datos.admin.habilitar(claveMaster(), [...m.sel], n, valor); await cargarMaster(); } catch (e) { alert(e.message); }
         break;
       }
       case 'borrar-participante': {
         const p = m.lista.find(x => x.id === el.dataset.id);
-        if (!confirm(`¿Eliminar a ${p.nombre} (@${p.usuario}) y todos sus resultados? No se puede deshacer.`)) return;
+        if (!await FC.confirmar({ icono: '🗑️', titulo: `¿Eliminar a ${p.nombre}?`, texto: `Se borrarán @${p.usuario} y todos sus resultados. No se puede deshacer.`, aceptar: 'Eliminar', tono: 'rojo' })) return;
         try { await FC.Datos.admin.borrarParticipante(claveMaster(), p.id); m.sel.delete(p.id); await cargarMaster(); } catch (e) { alert(e.message); }
         break;
       }
       case 'borrar-resultado': {
-        if (!confirm('¿Borrar este resultado? El participante podrá volver a jugar el nivel desde otra computadora.')) return;
+        if (!await FC.confirmar({ icono: '🗑️', titulo: '¿Borrar este resultado?', texto: 'El participante podrá volver a jugar el nivel desde otra computadora.', aceptar: 'Borrar', tono: 'rojo' })) return;
         try { await FC.Datos.admin.borrarResultado(claveMaster(), el.dataset.id); await cargarMaster(); } catch (e) { alert(e.message); }
         break;
       }

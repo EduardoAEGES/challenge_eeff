@@ -152,9 +152,10 @@ FC.Caso = (() => {
     dom.boton.disabled = false;
   }
 
-  function usarComodin() {
+  async function usarComodin() {
     if (!s || s.fase !== 'pregunta' || !comodinDisponible()) return;
-    if (s.modo !== 'guiado' && !confirm('🃏 Tienes un solo comodín en este nivel. ¿Usarlo en esta pregunta?')) return;
+    if (s.modo !== 'guiado' && !await FC.confirmar({ icono: '🃏', titulo: '¿Usar tu comodín?', texto: 'Tienes uno solo en este nivel. Te ayudará en esta pregunta.', aceptar: 'Usar comodín', cancelar: 'Guardarlo', tono: 'dorado' })) return;
+    if (!s || s.fase !== 'pregunta') return;
     const r = recorrido();
     const nodo = s.caso.nodos[r.pendiente];
     if (s.modo !== 'guiado') { s.estado.comodinUsado = true; guardar(); }
@@ -333,9 +334,10 @@ FC.Caso = (() => {
   // Lo usa la app para mostrar si el resultado se envió.
   const avisoEnvio = texto => { const el = $('caso-envio'); if (el) el.innerHTML = texto; };
 
-  function salir() {
+  async function salir() {
     if (!s) return;
-    if (s.fase !== 'cerrar' && s.modo === 'competencia' && !confirm('Tu avance queda guardado, pero el cronómetro sigue corriendo. ¿Salir del caso?')) return;
+    if (s.fase !== 'cerrar' && s.modo === 'competencia' && !await FC.confirmar({ icono: '⏱️', titulo: '¿Salir del caso?', texto: 'Tu avance queda guardado, pero el cronómetro sigue corriendo.', aceptar: 'Salir', cancelar: 'Seguir jugando', tono: 'rojo' })) return;
+    if (!s) return;
     cerrar();
   }
 
