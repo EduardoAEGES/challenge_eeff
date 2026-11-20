@@ -1,5 +1,5 @@
 /* =========================================================
-   CONFIGURACIÓN — conexión con Supabase (mismo proyecto que NAF Aprende)
+   CONFIGURACIÓN — conexión con Supabase (proyecto EduardoAEGES)
    Antes del evento, ejecuta una vez supabase/financial-challenge.sql
    en Supabase → SQL Editor → Run.
    La clave publishable es pública por diseño: la seguridad la dan las
@@ -9,6 +9,6 @@
 window.FC = window.FC || {};
 
 FC.CONFIG = {
-  SUPABASE_URL: 'https://nzuplictqcodgnjddzai.supabase.co',
-  SUPABASE_ANON_KEY: 'sb_publishable_2CyTqZ4iYUEE3tLBL1erDA_Wh2krp6k'
+  SUPABASE_URL: 'https://klmjmlhwuzhymrplemgw.supabase.co',
+  SUPABASE_ANON_KEY: 'sb_publishable_DSS-WHn-WawxfYe0RWUHRg_odMjrb_b'
 };
