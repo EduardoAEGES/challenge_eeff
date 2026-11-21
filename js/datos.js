@@ -19,6 +19,9 @@ FC.Datos = (() => {
     CREDENCIALES: 'Usuario o contraseña incorrectos.',
     NO_HABILITADO: 'El facilitador aún no te habilitó este nivel.',
     MASTER: 'Clave master incorrecta.',
+    CUPO_LLENO: 'Lo sentimos: los 25 cupos ya están completos.',
+    CORREO_INVALIDO: 'Escribe un correo electrónico válido.',
+    RESPUESTA_INVALIDA: 'Elige si asistirás o no.',
     SIN_ESQUEMA: 'La base de datos del reto aún no está configurada. El facilitador debe ejecutar supabase/financial-challenge.sql en Supabase.',
     RED: 'No hay conexión con el servidor. Revisa tu internet e inténtalo de nuevo.'
   };
@@ -82,13 +85,30 @@ FC.Datos = (() => {
       return json(db, p);
     },
     async fc_entrar({ p_usuario, p_clave }) { const db = leer(); const p = buscar(db, p_usuario, p_clave); p.visto = new Date().toISOString(); escribir(db); return json(db, p); },
-    async fc_guardar({ p_usuario, p_clave, p_progreso }) { const db = leer(); const p = buscar(db, p_usuario, p_clave); p.progreso = p_progreso; p.visto = new Date().toISOString(); escribir(db); },
+    async fc_guardar({ p_usuario, p_clave, p_progreso }) { const db = leer(); const p = buscar(db, p_usuario, p_clave); const inv = p.progreso?.invitacion; p.progreso = { ...p_progreso }; delete p.progreso.invitacion; if (inv) p.progreso.invitacion = inv; p.visto = new Date().toISOString(); escribir(db); },
     async fc_enviar_resultado({ p_usuario, p_clave, p_nivel, ...r }) {
       const db = leer(); const p = buscar(db, p_usuario, p_clave);
       if (!p.habilitado.includes(p_nivel)) throw error('NO_HABILITADO');
       if (db.resultados.some(x => x.participante_id === p.id && x.nivel === p_nivel)) return;
       db.resultados.push({ id: uuid(), participante_id: p.id, nivel: p_nivel, elecciones: r.p_elecciones, segundos: r.p_segundos, vidas: r.p_vidas, comodin: r.p_comodin, puntaje: r.p_puntaje, detalle: r.p_detalle, creado: new Date().toISOString() });
       escribir(db);
+    },
+    async fc_invitacion_cupos() {
+      const db = leer();
+      return { confirmados: db.participantes.filter(p => p.progreso?.invitacion?.respuesta === 'si').length, limite: 25 };
+    },
+    async fc_invitacion({ p_usuario, p_clave, p_respuesta, p_nombre, p_correo, p_celular }) {
+      const db = leer(); const p = buscar(db, p_usuario, p_clave);
+      if (!['si', 'no'].includes(p_respuesta)) throw error('RESPUESTA_INVALIDA');
+      if (p_respuesta === 'si') {
+        if ((p_nombre || '').trim().length < 5) throw error('NOMBRE_CORTO');
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test((p_correo || '').trim())) throw error('CORREO_INVALIDO');
+        const n = db.participantes.filter(x => x.progreso?.invitacion?.respuesta === 'si').length;
+        if (p.progreso?.invitacion?.respuesta !== 'si' && n >= 25) throw error('CUPO_LLENO');
+      }
+      const inv = { respuesta: p_respuesta, nombre: (p_nombre || '').trim().replace(/\s+/g, ' ').slice(0, 120), correo: (p_correo || '').trim().toLowerCase().slice(0, 120), celular: (p_celular || '').trim().slice(0, 15), fecha: new Date().toISOString() };
+      p.progreso = { ...(p.progreso || {}), invitacion: inv }; p.visto = inv.fecha; escribir(db);
+      return inv;
     },
     async fc_podio({ p_nivel }) {
       const db = leer();
@@ -127,6 +147,8 @@ FC.Datos = (() => {
       p_vidas: r.vidas, p_comodin: r.comodin, p_puntaje: r.puntaje, p_detalle: r.detalle || {}
     }),
     podio: nivel => llamar('fc_podio', { p_nivel: nivel }),
+    cupos: () => llamar('fc_invitacion_cupos', {}),
+    invitacion: (usuario, clave, d) => llamar('fc_invitacion', { p_usuario: usuario, p_clave: clave, p_respuesta: d.respuesta, p_nombre: d.nombre, p_correo: d.correo, p_celular: d.celular }),
     admin: {
       listar: master => llamar('fc_admin_listar', { p_master: master }),
       habilitar: (master, ids, nivel, valor) => llamar('fc_admin_habilitar', { p_master: master, p_ids: ids, p_nivel: nivel, p_valor: valor }),

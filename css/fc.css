@@ -529,3 +529,44 @@ h1 .ico, h2 .ico, h3 .ico { color: var(--certus); }
 @media (prefers-reduced-motion: reduce) { .invita-trofeo, .invita-cab h2, .invita-brillos i, .invita-ticket, .invita-form { animation: none; opacity: 1; } }
 .modal-cerrar { z-index: 3; }
 .modal-caja:has(.invita) .modal-cerrar { color: #fff; background: rgba(255, 255, 255, .14); border-color: transparent; }
+
+/* ---------- Invitación: cupos y campos ---------- */
+.invita-cab.sin-anim .invita-trofeo, .invita-cab.sin-anim h2 { animation: none; }
+.invita-cupos { display: grid; gap: 8px; padding: 12px 14px; border-radius: 14px; background: var(--ok-fondo); color: var(--ok-texto); }
+.invita-cupos > div:first-child { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.invita-cupos span { font-size: 13px; font-weight: 700; opacity: .85; }
+.invita-cupos .barra { height: 10px; background: rgba(0, 0, 0, .08); }
+.invita-cupos .barra > div { height: 100%; border-radius: inherit; background: currentColor; transition: width .4s; }
+.invita-cupos.lleno { background: var(--mal-fondo); color: var(--mal-texto); }
+p.invita-cupos { background: var(--superficie-2); color: var(--texto-suave); font-weight: 700; }
+.invita-campos { display: grid; gap: 12px; transition: opacity .2s; }
+.invita-campos.apagados { opacity: .45; }
+.invita-opciones label.deshabilitada { cursor: not-allowed; opacity: .5; }
+
+/* ---------- Encuesta flotante ---------- */
+.encuesta { position: fixed; right: 0; top: 50%; transform: translateY(-50%); z-index: 65; }
+.enc-pestana { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 8px; border: none; border-radius: 12px 0 0 12px;
+  background: var(--certus); color: #fff; font-weight: 900; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; box-shadow: -3px 4px 14px rgba(0, 0, 0, .2); cursor: pointer; transition: padding .15s; }
+.enc-pestana:hover { padding-right: 12px; }
+.enc-pestana span { writing-mode: vertical-rl; transform: rotate(180deg); }
+.enc-pestana .ico { width: 18px; height: 18px; color: #ffd34d; }
+.encuesta.abierta { right: 12px; }
+.enc-caja { position: relative; width: min(290px, calc(100vw - 24px)); display: grid; gap: 6px; padding: 16px 16px 14px; border-radius: 18px; background: var(--superficie);
+  border: 2px solid var(--borde); box-shadow: 0 16px 40px rgba(0, 0, 0, .22); }
+.enc-caja.entra { animation: subir .2s ease-out; }
+.enc-caja h4 { font-size: 15px; font-weight: 900; color: var(--certus); margin: 0 28px 4px 0; }
+.enc-caja label { font-size: 12px; font-weight: 800; color: var(--texto-suave); margin-top: 4px; }
+.enc-cerrar { position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; }
+.enc-estrellas { display: flex; gap: 2px; }
+.enc-estrellas button { border: none; background: none; padding: 0 2px; font-size: 26px; line-height: 1; color: var(--bloqueado-oscuro); cursor: pointer; transition: transform .1s; }
+.enc-estrellas button:hover { transform: scale(1.15); }
+.enc-estrellas button.on { color: #f5b301; }
+.enc-sino { display: flex; gap: 8px; }
+.enc-sino button { flex: 1; padding: 7px; border-radius: 10px; border: 2px solid var(--borde); background: var(--superficie); font-weight: 800; color: var(--texto); cursor: pointer; }
+.enc-sino button.on { border-color: var(--sel-borde); background: var(--sel-fondo); color: var(--sel-texto); }
+.enc-caja textarea { resize: vertical; font-family: inherit; padding: 8px 10px; font-size: 14px; margin: 6px 0 4px; }
+.enc-gracias { display: grid; justify-items: center; gap: 4px; text-align: center; padding: 10px 0; color: var(--ok-texto); }
+.enc-gracias .ico { width: 36px; height: 36px; }
+.enc-gracias span { font-size: 13px; color: var(--texto-suave); font-weight: 600; }
+.estrellas-mini i { font-style: normal; color: var(--bloqueado-oscuro); } .estrellas-mini i.on { color: #f5b301; }
+@media (max-width: 760px) { .encuesta { top: auto; bottom: 90px; transform: none; } }

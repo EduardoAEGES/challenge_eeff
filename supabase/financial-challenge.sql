@@ -105,7 +105,11 @@ end $$;
 create or replace function public.fc_guardar(p_usuario text, p_clave text, p_progreso jsonb)
 returns void language plpgsql security definer set search_path = public as $$
 begin
-  update fc_participantes set progreso = p_progreso, actualizado = now(), visto = now()
+  -- La respuesta a la invitación solo se cambia con fc_invitacion (controla el cupo)
+  update fc_participantes set
+      progreso = case when progreso ? 'invitacion' then jsonb_set(coalesce(p_progreso, '{}'::jsonb), '{invitacion}', progreso->'invitacion')
+                      else coalesce(p_progreso, '{}'::jsonb) - 'invitacion' end,
+      actualizado = now(), visto = now()
     where usuario = lower(trim(p_usuario)) and clave = p_clave;
   if not found then raise exception 'CREDENCIALES'; end if;
 end $$;
@@ -182,10 +186,45 @@ begin
   delete from fc_participantes where id = p_id;
 end $$;
 
+-- ---------- Invitación a la etapa presencial (cupo limitado) ----------
+create or replace function public.fc_invitacion_cupos()
+returns jsonb language sql stable security definer set search_path = public as $$
+  select jsonb_build_object('confirmados', count(*) filter (where progreso->'invitacion'->>'respuesta' = 'si'), 'limite', 25)
+  from fc_participantes;
+$$;
+
+create or replace function public.fc_invitacion(p_usuario text, p_clave text, p_respuesta text, p_nombre text, p_correo text, p_celular text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  fila fc_participantes;
+  n int;
+  inv jsonb;
+begin
+  perform pg_advisory_xact_lock(hashtext('fc_invitacion'));  -- una confirmación a la vez: el cupo nunca se pasa de 25
+  select * into fila from fc_participantes where usuario = lower(trim(p_usuario)) and clave = p_clave for update;
+  if not found then raise exception 'CREDENCIALES'; end if;
+  if p_respuesta not in ('si', 'no') then raise exception 'RESPUESTA_INVALIDA'; end if;
+  if p_respuesta = 'si' then
+    if length(trim(coalesce(p_nombre, ''))) < 5 then raise exception 'NOMBRE_CORTO'; end if;
+    if coalesce(trim(p_correo), '') !~* '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$' then raise exception 'CORREO_INVALIDO'; end if;
+    if coalesce(fila.progreso->'invitacion'->>'respuesta', '') <> 'si' then
+      select count(*) into n from fc_participantes where progreso->'invitacion'->>'respuesta' = 'si';
+      if n >= 25 then raise exception 'CUPO_LLENO'; end if;
+    end if;
+  end if;
+  inv := jsonb_build_object('respuesta', p_respuesta,
+    'nombre', left(regexp_replace(trim(coalesce(p_nombre, '')), '\s+', ' ', 'g'), 120),
+    'correo', left(lower(trim(coalesce(p_correo, ''))), 120),
+    'celular', left(trim(coalesce(p_celular, '')), 15), 'fecha', now());
+  update fc_participantes set progreso = jsonb_set(progreso, '{invitacion}', inv), actualizado = now(), visto = now() where id = fila.id;
+  return inv;
+end $$;
+
 grant execute on function public.fc_registrar(text, text, text, text), public.fc_entrar(text, text), public.fc_guardar(text, text, jsonb),
   public.fc_enviar_resultado(text, text, int, int[], int, int, boolean, int, jsonb), public.fc_podio(int),
   public.fc_admin_listar(text), public.fc_admin_habilitar(text, uuid[], int, boolean), public.fc_admin_ranking(text, int),
-  public.fc_admin_borrar_resultado(text, uuid), public.fc_admin_borrar_participante(text, uuid)
+  public.fc_admin_borrar_resultado(text, uuid), public.fc_admin_borrar_participante(text, uuid),
+  public.fc_invitacion_cupos(), public.fc_invitacion(text, text, text, text, text, text)
   to anon, authenticated;
 revoke execute on function public.fc_es_master(text), public.fc_json_participante(fc_participantes) from anon, authenticated, public;
 

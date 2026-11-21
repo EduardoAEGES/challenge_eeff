@@ -41,6 +41,7 @@ FC.App = (() => {
     P.habilitado = (d.habilitado || []).map(Number);
     P.resultados = d.resultados || {};
     if (conProgreso) P.progreso = { ...progresoVacio(), ...(d.progreso || {}) };
+    else if (P.progreso && d.progreso?.invitacion) P.progreso.invitacion = d.progreso.invitacion; // la respuesta vive en el servidor
   }
   async function sincronizar() {
     if (!P || P.demo || sincronizando) return;
@@ -83,6 +84,7 @@ FC.App = (() => {
     const vistas = { ruta: vRuta, progreso: vProgreso, master: vMaster };
     $('vista').innerHTML = bannerDemo() + (vistas[ui.vista] || vRuta)();
     $('panel').innerHTML = vPanel();
+    renderEncuesta();
     enlazar();
   }
 
@@ -272,17 +274,28 @@ FC.App = (() => {
   }
 
   // ---------- Invitación a la etapa presencial (al terminar los niveles 1 a 4) ----------
-  const EVENTO = { dia: 'Miércoles', fecha: '25 de noviembre', lugar: 'Laboratorio 8', sede: 'Sede Arequipa' };
+  const EVENTO = { dia: 'Miércoles', fecha: '25 de noviembre', lugar: 'Laboratorio 8', sede: 'Sede Arequipa', cupos: 25, premiados: 5 };
   const etapaPreviaCompleta = () => Boolean(P) && nivelAprobado(4);
   const invitacion = () => prog().invitacion || null;
+  const inv = { editando: false, cupos: null, error: null };
 
-  function abrirInvitacion() {
+  function htmlCupos() {
+    const c = inv.cupos;
+    if (!c) return '<p class="invita-cupos muted">Consultando cupos disponibles…</p>';
+    const libres = Math.max(0, c.limite - c.confirmados);
+    return `<div class="invita-cupos ${libres ? '' : 'lleno'}"><div><b>${libres ? `Quedan ${libres} de ${c.limite} cupos` : 'Cupos agotados'}</b>
+      <span>${c.confirmados} confirmado(s)</span></div><div class="barra"><div style="width:${Math.min(100, (c.confirmados / c.limite) * 100)}%"></div></div></div>`;
+  }
+
+  function abrirInvitacion(primeraVez = false) {
     if (!P) return;
-    const inv = invitacion();
+    const r = invitacion();
     const nombre = esc((P.nombre || '').split(' ')[0] || P.usuario);
-    const respondido = inv?.respuesta;
+    const mostrarForm = !r?.respuesta || inv.editando;
+    const yaConfirmado = r?.respuesta === 'si';
+    const lleno = inv.cupos && inv.cupos.confirmados >= inv.cupos.limite && !yaConfirmado;
     modal(`<div class="invita">
-      <div class="invita-cab">
+      <div class="invita-cab${primeraVez ? '' : ' sin-anim'}">
         <div class="invita-brillos" aria-hidden="true">${'<i></i>'.repeat(14)}</div>
         <div class="invita-trofeo">${FC.ico('trofeo')}</div>
         <small>Etapa previa completada</small>
@@ -296,39 +309,70 @@ FC.App = (() => {
             <h3>Te invitamos a participar</h3>
             <p>${FC.ico('pizarra')} Clase guiada y competencia en vivo</p>
             <p>${FC.ico('edificio')} <b>${EVENTO.lugar}</b> · ${EVENTO.sede}</p>
-            <p>${FC.ico('regalo')} Premios para los 3 primeros puestos</p>
+            <p>${FC.ico('regalo')} Premios para los ${EVENTO.premiados} primeros puestos</p>
+            <p>${FC.ico('usuarios')} Cupo limitado: ${EVENTO.cupos} participantes</p>
           </div>
         </div>
-        ${respondido ? `<div class="invita-gracias ${inv.respuesta}">${FC.ico(inv.respuesta === 'si' ? 'check' : 'equis')}
-            <div><b>${inv.respuesta === 'si' ? '¡Tu asistencia está confirmada!' : 'Registramos que no podrás asistir.'}</b>
-            <span>${inv.respuesta === 'si' ? `Te esperamos el ${EVENTO.dia.toLowerCase()} ${EVENTO.fecha} en el ${EVENTO.lugar}.` : 'Si cambias de opinión, puedes actualizar tu respuesta.'}</span></div></div>
+        ${htmlCupos()}
+        ${!mostrarForm ? `<div class="invita-gracias ${r.respuesta}">${FC.ico(r.respuesta === 'si' ? 'check' : 'equis')}
+            <div><b>${r.respuesta === 'si' ? '¡Tu inscripción está confirmada!' : 'Registramos que no podrás asistir.'}</b>
+            <span>${r.respuesta === 'si' ? `${esc(r.nombre)} · ${esc(r.correo)}<br>Te esperamos el ${EVENTO.dia.toLowerCase()} ${EVENTO.fecha} en el ${EVENTO.lugar}.` : 'Si cambias de opinión, puedes actualizar tu respuesta mientras haya cupos.'}</span></div></div>
           <button class="btn btn-blanco btn-bloque" type="button" data-accion="invitacion-cambiar">Cambiar mi respuesta</button>`
-        : `<form id="form-invitacion" class="invita-form">
+        : `<form id="form-invitacion" class="invita-form" novalidate>
           <p class="invita-pregunta">¿Asistirás el ${EVENTO.dia.toLowerCase()} ${EVENTO.fecha}?</p>
           <div class="invita-opciones">
-            <label><input type="radio" name="respuesta" value="si" required><span>${FC.ico('check')} Sí, asistiré</span></label>
-            <label><input type="radio" name="respuesta" value="no"><span>${FC.ico('equis')} No podré asistir</span></label>
+            <label class="${lleno ? 'deshabilitada' : ''}"><input type="radio" name="respuesta" value="si" ${lleno ? 'disabled' : ''} ${r?.respuesta === 'si' ? 'checked' : ''}><span>${FC.ico('check')} Sí, asistiré</span></label>
+            <label><input type="radio" name="respuesta" value="no" ${r?.respuesta === 'no' ? 'checked' : ''}><span>${FC.ico('equis')} No podré asistir</span></label>
           </div>
-          <div><label class="etiqueta" for="inv-celular">Celular (opcional, para recordatorios)</label>
-            <input class="campo" id="inv-celular" name="celular" inputmode="tel" maxlength="15" placeholder="9XX XXX XXX" value="${esc(inv?.celular || '')}"></div>
+          <div class="invita-campos">
+            <div><label class="etiqueta" for="inv-nombre">Nombres y apellidos completos *</label>
+              <input class="campo" id="inv-nombre" name="nombre" autocomplete="name" maxlength="120" value="${esc(r?.nombre || P.nombre || '')}"></div>
+            <div><label class="etiqueta" for="inv-correo">Correo electrónico *</label>
+              <input class="campo" id="inv-correo" name="correo" type="email" autocomplete="email" maxlength="120" placeholder="nombre@correo.com" value="${esc(r?.correo || '')}"></div>
+            <div><label class="etiqueta" for="inv-celular">Celular (opcional)</label>
+              <input class="campo" id="inv-celular" name="celular" inputmode="tel" maxlength="15" placeholder="9XX XXX XXX" value="${esc(r?.celular || '')}"></div>
+          </div>
+          ${inv.error ? `<p class="mensaje-error">${esc(inv.error)}</p>` : ''}
           <button class="btn btn-certus btn-bloque" type="submit">Enviar mi respuesta</button>
+          ${P.demo ? '<p class="nota-acceso" style="text-align:center">Simulación: la respuesta no se guarda.</p>' : ''}
         </form>`}
       </div></div>`);
-    if (!respondido) { FC.Sonido?.completado?.(); FC.Leccion.confeti(); }
+    const formulario = $('form-invitacion');
+    if (formulario) actualizarCamposInvitacion(formulario);
+    if (primeraVez) { FC.Sonido?.completado?.(); FC.Leccion.confeti(); }
+    if (!inv.cupos || primeraVez) FC.Datos.cupos().then(c => { inv.cupos = c; const el = document.querySelector('.invita-cupos'); if (el) el.outerHTML = htmlCupos(); if (c.confirmados >= c.limite && formulario && !yaConfirmado) abrirInvitacion(); }).catch(() => { /* sin conexión: se valida al enviar */ });
   }
 
-  function responderInvitacion(f) {
-    const respuesta = f.respuesta.value;
-    if (!respuesta) return;
-    prog().invitacion = { respuesta, celular: f.celular.value.trim().slice(0, 15), fecha: new Date().toISOString() };
-    guardarP();
+  // Nombre y correo solo son obligatorios si la persona asistirá
+  function actualizarCamposInvitacion(f) {
+    const si = f.respuesta.value === 'si';
+    f.querySelector('.invita-campos').classList.toggle('apagados', !si);
+  }
+
+  async function responderInvitacion(f) {
+    const d = { respuesta: f.respuesta.value, nombre: f.nombre.value.trim().replace(/\s+/g, ' '), correo: f.correo.value.trim(), celular: f.celular.value.trim() };
+    inv.error = !d.respuesta ? 'Elige si asistirás o no.'
+      : d.respuesta === 'si' && d.nombre.split(' ').length < 2 ? 'Escribe tus nombres y apellidos completos.'
+      : d.respuesta === 'si' && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.correo) ? 'Escribe un correo electrónico válido.' : null;
+    if (inv.error) { abrirInvitacion(); return; }
+    const boton = f.querySelector('button[type=submit]'); boton.disabled = true; boton.textContent = 'Enviando…';
+    try {
+      prog().invitacion = P.demo ? { ...d, fecha: new Date().toISOString() } : await FC.Datos.invitacion(P.usuario, P.clave, d);
+      guardarSesion();
+      inv.editando = false; inv.error = null;
+      FC.Datos.cupos().then(c => { inv.cupos = c; const el = document.querySelector('.invita-cupos'); if (el) el.outerHTML = htmlCupos(); }).catch(() => {});
+      if (d.respuesta === 'si') FC.Sonido?.completado?.();
+    } catch (e) {
+      inv.error = e.message;
+      if (e.codigo === 'CUPO_LLENO') inv.cupos = { confirmados: EVENTO.cupos, limite: EVENTO.cupos };
+    }
     abrirInvitacion();
     render();
   }
 
   const bannerInvitacion = () => (P && etapaPreviaCompleta()
     ? `<div class="invita-banner"><span class="invita-banner-ic">${FC.ico('trofeo')}</span>
-        <div><b>${invitacion()?.respuesta === 'si' ? 'Asistencia confirmada' : '¡Completaste la etapa previa!'}</b>
+        <div><b>${invitacion()?.respuesta === 'si' ? 'Inscripción confirmada' : '¡Completaste la etapa previa!'}</b>
         <span>${EVENTO.dia} ${EVENTO.fecha} · ${EVENTO.lugar} · ${EVENTO.sede}</span></div>
         <button class="btn btn-chico ${invitacion() ? 'btn-blanco' : 'btn-certus'}" data-accion="invitacion">${invitacion() ? 'Ver invitación' : 'Responder invitación'}</button></div>`
     : '');
@@ -351,7 +395,7 @@ FC.App = (() => {
           guardarP();
         }
         render();
-        if (!P.demo && !antes && etapaPreviaCompleta() && !invitacion()) setTimeout(abrirInvitacion, 350);
+        if (!P.demo && !antes && etapaPreviaCompleta() && !invitacion()) setTimeout(() => abrirInvitacion(true), 350);
       }
     });
   }
@@ -449,9 +493,42 @@ FC.App = (() => {
   }
   function asistencia(p) {
     const r = p.progreso?.invitacion?.respuesta;
-    if (r === 'si') return `<span class="chip verde" title="${esc(p.progreso.invitacion.celular || '')}">Asistirá</span>`;
+    if (r === 'si') { const i = p.progreso.invitacion; return `<span class="chip verde" title="${esc([i.nombre, i.correo, i.celular].filter(Boolean).join(' · '))}">Asistirá</span>`; }
     if (r === 'no') return '<span class="chip">No asistirá</span>';
     return p.progreso?.lecciones?.n4ex?.aprobada ? '<span class="chip dorado">Sin respuesta</span>' : '<span class="muted">—</span>';
+  }
+  function seccionInscritos(lista) {
+    const ins = lista.filter(p => p.progreso?.invitacion?.respuesta === 'si')
+      .sort((a, b) => String(a.progreso.invitacion.fecha).localeCompare(String(b.progreso.invitacion.fecha)));
+    const lleno = ins.length >= EVENTO.cupos;
+    return `<div class="seccion"><h2>${FC.ico('edificio')} Inscritos · ${EVENTO.dia} ${EVENTO.fecha} · ${EVENTO.lugar}</h2>
+      <div class="tarjeta">
+        <div class="invita-cupos ${lleno ? 'lleno' : ''}" style="margin-bottom:12px"><div><b>${ins.length} de ${EVENTO.cupos} cupos ocupados</b><span>${lleno ? 'Cupo completo' : `Quedan ${EVENTO.cupos - ins.length}`}</span></div>
+          <div class="barra"><div style="width:${Math.min(100, ins.length / EVENTO.cupos * 100)}%"></div></div></div>
+        ${ins.length ? `<div class="table-wrap"><table><thead><tr><th>#</th><th>Nombres y apellidos</th><th>Correo</th><th>Celular</th><th>Usuario</th></tr></thead><tbody>
+          ${ins.map((p, i) => { const v = p.progreso.invitacion; return `<tr><td>${i + 1}</td><td><b>${esc(v.nombre)}</b></td><td>${esc(v.correo)}</td><td>${esc(v.celular || '—')}</td><td>@${esc(p.usuario)}</td></tr>`; }).join('')}</tbody></table></div>
+          <div class="codigos"><button class="btn btn-blanco btn-chico" data-accion="csv-inscritos">${FC.ico('descargar')} Exportar inscritos (CSV)</button></div>`
+          : '<p class="muted">Aún no hay inscritos.</p>'}
+      </div></div>`;
+  }
+  function seccionEncuesta(lista) {
+    const rs = lista.filter(p => p.progreso?.encuesta).map(p => ({ p, e: p.progreso.encuesta }));
+    const prom = k => rs.length ? (rs.reduce((a, x) => a + (Number(x.e[k]) || 0), 0) / rs.length).toFixed(1) : '—';
+    const recom = rs.length ? Math.round(rs.filter(x => x.e.recomienda).length / rs.length * 100) + '%' : '—';
+    const estrellas = n => `<span class="estrellas-mini">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= n ? 'on' : ''}">★</i>`).join('')}</span>`;
+    return `<div class="seccion"><h2>${FC.ico('comodin')} Encuesta de satisfacción</h2>
+      <div class="tarjeta">
+        <div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));display:grid;margin-bottom:12px">
+          <div class="stat"><span class="stat-ic t-azul">${FC.ico('usuarios')}</span><div><small>Respuestas</small>${rs.length}</div></div>
+          <div class="stat"><span class="stat-ic t-dorado">${FC.ico('insignia')}</span><div><small>Satisfacción</small>${prom('satisfaccion')} / 5</div></div>
+          <div class="stat"><span class="stat-ic t-morado">${FC.ico('libro')}</span><div><small>Utilidad</small>${prom('utilidad')} / 5</div></div>
+          <div class="stat"><span class="stat-ic t-verde">${FC.ico('check')}</span><div><small>Recomendaría</small>${recom}</div></div>
+        </div>
+        ${rs.length ? `<div class="table-wrap"><table><thead><tr><th>Participante</th><th>Satisfacción</th><th>Utilidad</th><th>Comentario</th></tr></thead><tbody>
+          ${rs.map(({ p, e }) => `<tr><td><b>${esc(p.nombre)}</b></td><td>${estrellas(e.satisfaccion)}</td><td>${estrellas(e.utilidad)}</td><td>${esc(e.comentario || '—')}</td></tr>`).join('')}</tbody></table></div>
+          <div class="codigos"><button class="btn btn-blanco btn-chico" data-accion="csv-encuesta">${FC.ico('descargar')} Exportar encuesta (CSV)</button></div>`
+          : '<p class="muted">Aún no hay respuestas.</p>'}
+      </div></div>`;
   }
   function vMaster() {
     if (!esMaster()) {
@@ -528,6 +605,9 @@ FC.App = (() => {
             : `<p class="muted">${m.lista ? 'Aún no hay participantes registrados.' : 'Cargando…'}</p>`}
         </div></div>
 
+      ${seccionInscritos(lista)}
+      ${seccionEncuesta(lista)}
+
       <div class="seccion"><h2>${FC.ico('trofeo')} Ranking en vivo</h2>
         <nav class="tabs">${[6, 7].map(k => `<button class="tab${k === m.nivel ? ' activa' : ''}" data-accion="tab-ranking" data-n="${k}">Nivel ${k} · ${nombreNivel(k)}</button>`).join('')}</nav>
         ${m.nivel === 7 && ranking?.length ? `<div class="tarjeta" style="margin-bottom:14px">${podioHTML(ranking.slice(0, 3), 'Podio de la final')}<div class="codigos" style="justify-content:center"><button class="btn btn-certus" data-accion="proyectar-podio">Proyectar podio en pantalla completa</button></div></div>` : ''}
@@ -601,6 +681,8 @@ FC.App = (() => {
       case 'proyectar-podio': modal(podioHTML(m.ranking[7].slice(0, 3), 'Podio de la final'), true); FC.Sonido.completado(); FC.Leccion.confeti(); break;
       case 'ver-resultado': verResultado(m.ranking[m.nivel][Number(el.dataset.i)]); break;
       case 'csv': exportarCSV(m.nivel); break;
+      case 'csv-inscritos': exportarInscritos(); break;
+      case 'csv-encuesta': exportarEncuesta(); break;
       case 'guiado-master': abrirGuiado(el.dataset.id, true); break;
       case 'demo': iniciarDemo(); break;
       case 'probar-leccion': {
@@ -609,7 +691,7 @@ FC.App = (() => {
         break;
       }
       case 'reiniciar-comodines': comodinesPrueba = {}; render(); break;
-      case 'simular-previa': iniciarDemo({ previaCompleta: true }); setTimeout(abrirInvitacion, 300); break;
+      case 'simular-previa': iniciarDemo({ previaCompleta: true }); setTimeout(() => abrirInvitacion(true), 300); break;
       case 'probar-caso': {
         const nv = FC.NIVELES.find(x => x.n === n);
         FC.Caso.abrir({ casoId: nv.caso, modo: 'prueba', etiqueta: `Nivel ${n} · ${nv.titulo}`, alCerrar: render });
@@ -633,6 +715,24 @@ FC.App = (() => {
     FC.Caso.activarTabs($('modal-contenido'));
   }
 
+  function descargarCSV(filas, nombre) {
+    const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const url = URL.createObjectURL(new Blob(['\ufeff' + filas.map(f => f.map(q).join(',')).join('\n')], { type: 'text/csv;charset=utf-8' }));
+    const a = Object.assign(document.createElement('a'), { href: url, download: nombre });
+    document.body.append(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  }
+  function exportarInscritos() {
+    const filas = [['N.º', 'Nombres y apellidos', 'Correo', 'Celular', 'Usuario', 'Condición', 'Fecha de inscripción']];
+    (ui.master.lista || []).filter(p => p.progreso?.invitacion?.respuesta === 'si')
+      .sort((a, b) => String(a.progreso.invitacion.fecha).localeCompare(String(b.progreso.invitacion.fecha)))
+      .forEach((p, i) => { const v = p.progreso.invitacion; filas.push([i + 1, v.nombre, v.correo, v.celular, p.usuario, p.condicion, new Date(v.fecha).toLocaleString('es-PE')]); });
+    descargarCSV(filas, 'financial-challenge-inscritos-25-noviembre.csv');
+  }
+  function exportarEncuesta() {
+    const filas = [['Participante', 'Usuario', 'Satisfacción (1-5)', 'Utilidad (1-5)', '¿Recomendaría?', 'Comentario', 'Fecha']];
+    (ui.master.lista || []).filter(p => p.progreso?.encuesta).forEach(p => { const e = p.progreso.encuesta; filas.push([p.nombre, p.usuario, e.satisfaccion, e.utilidad, e.recomienda ? 'Sí' : 'No', e.comentario, new Date(e.fecha).toLocaleString('es-PE')]); });
+    descargarCSV(filas, 'financial-challenge-encuesta.csv');
+  }
   function exportarCSV(n) {
     const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const filas = [['Puesto', 'Participante', 'Usuario', 'Condición', 'Puntaje', 'Tiempo (s)', 'Vidas', 'Comodín', n === 7 ? 'Premio' : '']];
@@ -641,6 +741,48 @@ FC.App = (() => {
     const a = Object.assign(document.createElement('a'), { href: url, download: `financial-challenge-nivel-${n}.csv` });
     document.body.append(a); a.click(); a.remove(); URL.revokeObjectURL(url);
   }
+
+  // ---------- Encuesta de satisfacción flotante ----------
+  const enc = { abierta: false, d: { satisfaccion: 0, utilidad: 0, recomienda: null, comentario: '' }, enviada: false };
+  function renderEncuesta() {
+    const raiz = $('encuesta');
+    if (!raiz) return;
+    const visible = Boolean(P) && !esMaster() && !(prog().encuesta && !enc.enviada);
+    raiz.hidden = !visible;
+    if (!visible) return;
+    const estrellas = k => `<div class="enc-estrellas" role="radiogroup">${[1, 2, 3, 4, 5].map(i => `<button type="button" class="${i <= enc.d[k] ? 'on' : ''}" data-enc="${k}" data-v="${i}" aria-label="${i} de 5">★</button>`).join('')}</div>`;
+    raiz.className = `encuesta${enc.abierta ? ' abierta' : ''}`;
+    raiz.innerHTML = !enc.abierta
+      ? `<button class="enc-pestana" type="button" data-enc-abrir>${FC.ico('comodin')}<span>Encuesta</span></button>`
+      : `<div class="enc-caja${enc.animar ? ' entra' : ''}" role="dialog" aria-label="Encuesta de satisfacción">
+          <button class="btn-icono enc-cerrar" type="button" data-enc-cerrar aria-label="Cerrar">${FC.ico('cerrar')}</button>
+          ${enc.enviada ? `<div class="enc-gracias">${FC.ico('check')}<b>¡Gracias por tu opinión!</b><span>Nos ayuda a mejorar el Financial Challenge.</span></div>`
+          : `<h4>¿Qué te parece Financial Challenge?</h4>
+          <label>Satisfacción general</label>${estrellas('satisfaccion')}
+          <label>¿Te ayudó a entender los estados financieros?</label>${estrellas('utilidad')}
+          <label>¿Lo recomendarías a un compañero?</label>
+          <div class="enc-sino"><button type="button" class="${enc.d.recomienda === true ? 'on' : ''}" data-enc="recomienda" data-v="1">Sí</button><button type="button" class="${enc.d.recomienda === false ? 'on' : ''}" data-enc="recomienda" data-v="0">No</button></div>
+          <textarea class="campo" id="enc-comentario" rows="2" maxlength="400" placeholder="Comentario (opcional)">${esc(enc.d.comentario)}</textarea>
+          <button class="btn btn-certus btn-chico btn-bloque" type="button" data-enc-enviar ${enc.d.satisfaccion && enc.d.utilidad && enc.d.recomienda !== null ? '' : 'disabled'}>Enviar</button>`}
+        </div>`;
+  }
+  document.addEventListener('click', e => {
+    const raiz = $('encuesta');
+    if (!raiz || !raiz.contains(e.target)) return;
+    const b = e.target.closest('button');
+    if (!b) return;
+    const com = $('enc-comentario'); if (com) enc.d.comentario = com.value;
+    enc.animar = b.hasAttribute('data-enc-abrir');
+    if (b.hasAttribute('data-enc-abrir')) enc.abierta = true;
+    else if (b.hasAttribute('data-enc-cerrar')) { enc.abierta = false; if (enc.enviada) enc.enviada = false; }
+    else if (b.dataset.enc === 'recomienda') enc.d.recomienda = b.dataset.v === '1';
+    else if (b.dataset.enc) enc.d[b.dataset.enc] = Number(b.dataset.v);
+    else if (b.hasAttribute('data-enc-enviar')) {
+      prog().encuesta = { ...enc.d, comentario: enc.d.comentario.trim().slice(0, 400), fecha: new Date().toISOString() };
+      guardarP(); enc.enviada = true;
+    }
+    renderEncuesta();
+  });
 
   // ---------- Eventos ----------
   function enlazar() {
@@ -681,8 +823,8 @@ FC.App = (() => {
       case 'volver-acceso': ir('ruta'); return;
       case 'salir-demo': salirDemo(); return;
       case 'repaso': abrirRepaso(); return;
-      case 'invitacion': abrirInvitacion(); return;
-      case 'invitacion-cambiar': delete prog().invitacion; guardarP(); abrirInvitacion(); render(); return;
+      case 'invitacion': inv.editando = false; inv.error = null; abrirInvitacion(); return;
+      case 'invitacion-cambiar': inv.editando = true; abrirInvitacion(); return;
       case 'actualizar': sincronizar(); return;
       case 'reenviar': reintentarEnvios(); return;
       case 'podio-participante': modal('<p class="muted">Cargando el podio…</p>'); FC.Datos.podio(7).then(l => modal(podioHTML(l, 'Podio de la final'))).catch(err => modal(`<p class="mensaje-error">${esc(err.message)}</p>`)); return;
@@ -704,6 +846,7 @@ FC.App = (() => {
     FC.Caso.init();
     document.querySelectorAll('#nav button[data-vista]').forEach(b => b.addEventListener('click', () => ir(b.dataset.vista)));
     $('nav-salir').addEventListener('click', cerrarSesion);
+    $('modal').addEventListener('change', e => { if (e.target.name === 'respuesta' && e.target.form?.id === 'form-invitacion') actualizarCamposInvitacion(e.target.form); });
     $('modal').addEventListener('submit', e => { if (e.target.id === 'form-invitacion') { e.preventDefault(); responderInvitacion(e.target); } });
     $('modal').addEventListener('click', e => { if (e.target.closest('[data-cerrar]')) cerrarModal(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('modal').hidden) cerrarModal(); });
