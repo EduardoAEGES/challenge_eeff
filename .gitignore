@@ -2,3 +2,6 @@
 ~$*
 # Configuración local de Claude Code
 .claude/
+
+# Solucionario del facilitador: no publicar (el repositorio y la web son públicos)
+*Solucionario*.docx
