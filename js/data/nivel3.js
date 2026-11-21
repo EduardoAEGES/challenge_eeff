@@ -1,194 +1,138 @@
 /* =========================================================
-   NIVEL 3 — Flujos de efectivo (NIC 7) y cambios en el patrimonio
+   NIVEL 3 — Financiar e invertir
+   Préstamo, aporte o leasing (NIIF 16), flujos de efectivo (NIC 7),
+   categorías del estado de resultados (NIIF 18) y pagos anticipados.
    ========================================================= */
 window.FC = window.FC || {};
 FC.CONTENIDO = FC.CONTENIDO || {};
 
 FC.CONTENIDO.n3l1 = { ejercicios: [
   {
-    type: 'teoria', titulo: 'El estado de flujos de efectivo',
-    intro: 'La <b>NIC 7</b> clasifica las entradas y salidas de efectivo y equivalentes en tres actividades.',
+    type: 'teoria', titulo: '¿Cómo financiar una inversión?',
+    intro: 'En el reto tendrás que comprar equipos o enfrentar una crisis. Cada forma de conseguir el dinero deja una huella distinta en los estados.',
     puntos: [
-      { icono: '⚙️', titulo: 'Operación', texto: 'Las actividades principales: cobros a clientes, pagos a proveedores, sueldos e impuestos.' },
-      { icono: '🏗️', titulo: 'Inversión', texto: 'Compra y venta de activos de largo plazo, como maquinaria, e inversiones.' },
-      { icono: '🏦', titulo: 'Financiación', texto: 'Cambios en el capital y en los préstamos: aportes, préstamos recibidos y pagados, dividendos.' },
-      { icono: '💵', titulo: 'Equivalentes de efectivo', texto: 'Inversiones de corto plazo, muy líquidas y con riesgo poco significativo de cambio de valor, normalmente con vencimiento de hasta tres meses.' }
+      { icono: 'banco', titulo: 'Préstamo bancario', texto: 'Entra efectivo y nace un <b>pasivo</b>. Genera intereses (gasto de financiación). El endeudamiento sube.' },
+      { icono: 'usuarios', titulo: 'Aporte de los socios', texto: 'Entra efectivo y sube el <b>patrimonio</b>. No hay intereses. El endeudamiento baja.' },
+      { icono: 'recibo', titulo: 'Leasing financiero (NIIF 16)', texto: 'No sale efectivo hoy: se reconoce un <b>activo por derecho de uso</b> y un <b>pasivo por arrendamiento</b>.' },
+      { icono: 'calculadora', titulo: 'Compra al contado', texto: 'Sale efectivo (actividad de inversión) y entra un activo no corriente que se <b>deprecia</b> cada año. La depreciación es gasto, pero no saca efectivo.' }
     ]
   },
   {
-    type: 'clasificar', prompt: '¿En qué actividad va cada movimiento de efectivo?',
-    grupos: ['Operación', 'Inversión', 'Financiación'],
-    items: [
-      { text: 'Cobro a clientes', grupo: 0 }, { text: 'Compra de un camión', grupo: 1 }, { text: 'Préstamo bancario recibido', grupo: 2 },
-      { text: 'Pago de sueldos', grupo: 0 }, { text: 'Aporte de los socios', grupo: 2 }
-    ],
-    pista: 'Inversión = activos de largo plazo. Financiación = dueños y prestamistas.',
-    explain: 'El negocio diario es operación; los activos de largo plazo, inversión; dueños y bancos, financiación.'
-  },
-  {
-    type: 'tf', statement: 'La depreciación es una salida de efectivo del periodo.',
-    answer: false, pista: '¿Alguien recibe dinero cuando registras la depreciación?',
-    explain: 'Es un gasto que no usa efectivo: el dinero salió cuando se compró el activo.'
-  },
-  {
-    type: 'choice', prompt: 'Vender una máquina usada al contado es un flujo de…',
-    options: [{ text: 'Inversión' }, { text: 'Operación' }, { text: 'Financiación' }],
-    answer: 0, explain: 'Comprar o vender activos de largo plazo son actividades de inversión.'
-  },
-  {
-    type: 'choice', prompt: 'Una empresa toma un leasing por una máquina, sin pagar nada al inicio. ¿Qué muestra el flujo de efectivo en ese momento?',
-    options: [
-      { text: 'Nada: es una transacción que no usa efectivo y se revela en las notas' },
-      { text: 'Una salida de inversión por el valor de la máquina' },
-      { text: 'Una entrada de financiación' }
-    ],
-    answer: 0, pista: 'Si no se mueve efectivo, no hay flujo.',
-    explain: 'Las transacciones de inversión o financiación que no usan efectivo se excluyen del estado y se revelan.'
-  },
-  {
-    type: 'fill', prompt: 'Completa la frase', sentence: 'Pagar la cuota de capital de un préstamo es un flujo de ___.',
-    options: ['financiación', 'operación', 'inversión'], answer: 0,
-    explain: 'Devolver el capital prestado es una actividad de financiación.'
+    type: 'choice', prompt: 'Con un leasing financiero, ¿qué reconoce la empresa según la NIIF 16?',
+    options: [{ text: 'Un activo por derecho de uso y un pasivo por arrendamiento' }, { text: 'Solo un gasto de alquiler cada mes' }, { text: 'Nada, hasta terminar de pagar' }],
+    answer: 0, pista: 'La empresa controla el bien y se compromete a pagar cuotas.',
+    explain: 'El arrendatario reconoce el derecho de uso (activo) y la obligación de pagar las cuotas (pasivo).'
   },
   {
     type: 'choice',
-    escena: { personaje: '👩🏽‍💼', nombre: 'Laura', texto: 'Este año vendimos más que nunca, pero el flujo de operación salió negativo.' },
-    prompt: '¿Cuál es la explicación más probable?',
-    options: [
-      { text: 'Vendieron mucho al crédito y aún no cobran' },
-      { text: 'Compraron un local al contado' },
-      { text: 'Pagaron dividendos' }
+    escena: { personaje: 'cafe', nombre: 'Rosa · gerente de una cafetería', texto: 'Compramos una cafetera industrial de S/ 60,000 con un préstamo bancario de largo plazo.' },
+    prompt: '¿Qué pasó con el endeudamiento (pasivo ÷ activo)?',
+    options: FC.ANALISIS, answer: AUMENTO,
+    pista: 'Suben el activo y el pasivo en el mismo monto, pero el pasivo es la parte de arriba de la división.',
+    explain: 'La deuda crece proporcionalmente más que el activo: el endeudamiento sube.'
+  },
+  {
+    type: 'choice',
+    escena: { personaje: 'usuarios', nombre: 'Socios de la empresa', texto: 'En lugar de pedir un préstamo, aportamos S/ 50,000 de capital.' },
+    prompt: '¿Qué pasó con el endeudamiento (pasivo ÷ activo)?',
+    options: FC.ANALISIS, answer: DISMINUYO,
+    explain: 'El activo sube y el pasivo no cambia: cada sol de activo depende menos de la deuda.'
+  },
+  {
+    type: 'match', prompt: 'Une cada forma de financiar con lo que aparece en el estado de situación financiera',
+    pairs: [
+      ['Préstamo bancario', 'Obligación financiera (pasivo)'],
+      ['Aporte de socios', 'Capital social (patrimonio)'],
+      ['Leasing financiero', 'Derecho de uso y pasivo por arrendamiento'],
+      ['Compra al contado', 'Menos efectivo y más activo fijo']
     ],
-    answer: 0, explain: 'Comprar un local es inversión y los dividendos son financiación; las ventas no cobradas sí afectan la operación.'
+    explain: 'Elegir cómo financiar cambia la liquidez, el endeudamiento y la utilidad (por los intereses).'
+  },
+  {
+    type: 'tf', statement: 'La depreciación de una máquina reduce la utilidad, pero no saca efectivo de la caja.',
+    answer: true, explain: 'El efectivo salió cuando se compró la máquina; la depreciación reparte ese costo en los años de uso.'
   }
 ] };
 
 FC.CONTENIDO.n3l2 = { ejercicios: [
   {
-    type: 'teoria', titulo: 'Intereses, dividendos y métodos',
-    intro: 'Con la NIIF 18, la NIC 7 se modificó para que todas las empresas clasifiquen igual los intereses y dividendos.',
+    type: 'teoria', titulo: 'Flujos de efectivo y la NIIF 18',
+    intro: 'El reto te preguntará dónde se presenta cada movimiento. Recuerda las tres actividades del flujo de efectivo y las categorías del estado de resultados.',
     puntos: [
-      { icono: '💸', titulo: 'Intereses pagados', texto: 'En empresas no financieras: actividades de <b>financiación</b>.' },
-      { icono: '🎁', titulo: 'Dividendos pagados', texto: 'Actividades de <b>financiación</b>: es el retorno a los dueños.' },
-      { icono: '📥', titulo: 'Intereses y dividendos cobrados', texto: 'Actividades de <b>inversión</b>.' },
-      { icono: '🧭', titulo: 'Método directo o indirecto', texto: 'El directo muestra cobros y pagos brutos. El indirecto parte del <b>resultado operativo</b> y lo ajusta por partidas que no son efectivo.' }
+      { icono: 'ciclo', titulo: 'Operación', texto: 'Cobros a clientes, pagos a proveedores y al personal: el día a día del negocio.' },
+      { icono: 'calculadora', titulo: 'Inversión', texto: 'Compra o venta de maquinaria, equipos e intangibles.' },
+      { icono: 'banco', titulo: 'Financiación', texto: 'Préstamos, <b>aportes de socios</b>, dividendos pagados y, con la NIIF 18, los <b>intereses pagados</b> (empresas no financieras).' },
+      { icono: 'recibo', titulo: 'Estado de resultados (NIIF 18)', texto: 'Categorías de <b>operación</b>, inversión y financiación. Subtotales: resultado operativo y resultado antes de financiación e impuestos.' },
+      { icono: 'reloj', titulo: 'Pagos anticipados', texto: 'Lo pagado por un servicio que aún no recibes es un <b>activo</b>; se vuelve gasto cuando lo usas.' }
     ]
   },
   {
-    type: 'clasificar', prompt: 'Clasifica según la NIC 7 modificada (empresa comercial)',
+    type: 'clasificar', prompt: '¿En qué actividad del flujo de efectivo va cada movimiento?',
     grupos: ['Operación', 'Inversión', 'Financiación'],
     items: [
-      { text: 'Intereses pagados al banco', grupo: 2 }, { text: 'Dividendos pagados a socios', grupo: 2 },
-      { text: 'Intereses cobrados de un depósito', grupo: 1 }, { text: 'Pago a proveedores', grupo: 0 }
+      { text: 'Cobro a clientes', grupo: 0 }, { text: 'Pago a proveedores', grupo: 0 },
+      { text: 'Compra de una cafetera industrial', grupo: 1 },
+      { text: 'Préstamo bancario recibido', grupo: 2 }, { text: 'Aporte de los socios', grupo: 2 }, { text: 'Dividendos pagados', grupo: 2 }
     ],
-    explain: 'Intereses y dividendos pagados van en financiación; los cobrados, en inversión.'
+    pista: 'Operación = el día a día; inversión = activos de largo plazo; financiación = bancos y dueños.',
+    explain: 'Los movimientos con bancos y dueños son de financiación; los activos de largo plazo, de inversión.'
   },
   {
-    type: 'choice', prompt: 'En el método indirecto, ¿desde qué cifra se parte?',
-    options: [{ text: 'Resultado operativo' }, { text: 'Ventas' }, { text: 'Efectivo al inicio' }],
-    answer: 0, pista: 'Es un subtotal de la NIIF 18.',
-    explain: 'Tras la modificación, el método indirecto parte del resultado operativo.'
+    type: 'choice', prompt: 'Según la NIC 7 modificada por la NIIF 18, ¿dónde se presentan los intereses que una empresa comercial paga al banco?',
+    options: [{ text: 'Actividades de financiación' }, { text: 'Actividades de operación' }, { text: 'Actividades de inversión' }],
+    answer: 0, explain: 'Para empresas no financieras, los intereses pagados se clasifican en financiación.'
   },
   {
-    type: 'tf', statement: 'En el método indirecto, la depreciación se suma al resultado porque no usó efectivo.',
-    answer: true, explain: 'Se resta como gasto en resultados, pero no salió dinero; por eso se “devuelve”.'
+    type: 'choice', prompt: 'Una multa que paga una empresa comercial, ¿en qué categoría del estado de resultados (NIIF 18) se presenta?',
+    options: [{ text: 'Operación' }, { text: 'Inversión' }, { text: 'Financiación' }],
+    answer: 0, pista: '¿Es un rendimiento de inversiones o un costo de una deuda?',
+    explain: 'No es un rendimiento de inversiones ni un costo de deuda: va en la categoría de operación.'
   },
   {
-    type: 'choice', prompt: 'Las cuentas por cobrar subieron S/ 10,000 en el año. En el método indirecto, ese aumento…',
-    options: [{ text: 'Se resta: ventas que aún no se cobran' }, { text: 'Se suma' }, { text: 'No se considera' }],
-    answer: 0, pista: 'Si los clientes deben más, cobraste menos de lo que vendiste.',
-    explain: 'Un aumento de cuentas por cobrar reduce el efectivo generado por la operación.'
+    type: 'choice', prompt: '¿Qué subtotal de la NIIF 18 aparece justo antes de los gastos de financiación?',
+    options: [{ text: 'Resultado antes de financiación e impuestos' }, { text: 'Resultado operativo' }, { text: 'Ganancia bruta' }],
+    answer: 0, explain: 'Primero va el resultado operativo, luego la categoría de inversión y después el resultado antes de financiación e impuestos.'
   },
   {
-    type: 'fill', prompt: 'Completa la frase', sentence: 'La NIC 7 alienta el método ___, porque muestra los cobros y pagos brutos.',
-    options: ['directo', 'indirecto', 'promedio'], answer: 0,
-    explain: 'El método directo da información útil para estimar flujos futuros.'
-  }
-] };
-
-FC.CONTENIDO.n3l3 = { ejercicios: [
-  {
-    type: 'teoria', titulo: 'Estado de cambios en el patrimonio',
-    intro: 'Explica cómo pasó el patrimonio del saldo inicial al saldo final, columna por columna.',
-    puntos: [
-      { icono: '💼', titulo: 'Capital', texto: 'Sube con aportes de los socios o al capitalizar utilidades.' },
-      { icono: '🛡️', titulo: 'Reserva legal', texto: 'La Ley General de Sociedades exige destinar al menos el <b>10 %</b> de la utilidad distribuible a la reserva, hasta que alcance el <b>20 % del capital</b>.' },
-      { icono: '📈', titulo: 'Resultados acumulados', texto: 'Suben con la utilidad del año y bajan con dividendos, reservas o capitalización.' },
-      { icono: '🎁', titulo: 'Dividendos', texto: 'No son gasto: reducen el patrimonio y no aparecen en el estado de resultados.' }
-    ]
-  },
-  {
-    type: 'tf', statement: 'Los dividendos pagados reducen la utilidad del ejercicio.',
-    answer: false, pista: '¿Aparecen los dividendos en el estado de resultados?',
-    explain: 'No son gasto: reducen los resultados acumulados en el estado de cambios en el patrimonio.'
-  },
-  {
-    type: 'choice', prompt: 'Utilidad del año: S/ 40,000. ¿Cuánto es el mínimo para la reserva legal (si aún no llega al 20 % del capital)?',
-    options: [{ text: 'S/ 4,000' }, { text: 'S/ 8,000' }, { text: 'S/ 400' }],
-    answer: 0, explain: 'El 10 % de S/ 40,000 es S/ 4,000.'
-  },
-  {
-    type: 'choice', prompt: 'Al capitalizar utilidades, ¿qué pasa con el patrimonio total?',
-    options: [{ text: 'No cambia: solo pasa de resultados acumulados a capital' }, { text: 'Aumenta' }, { text: 'Disminuye' }],
-    answer: 0, explain: 'Es un movimiento dentro del patrimonio.'
-  },
-  {
-    type: 'match', prompt: 'Une cada movimiento con su efecto',
-    pairs: [
-      ['Aporte de socios', 'Sube el capital'],
-      ['Utilidad del año', 'Suben los resultados acumulados'],
-      ['Dividendos', 'Bajan los resultados acumulados'],
-      ['Reserva legal', 'Pasa de resultados a reservas']
-    ],
-    explain: 'Así se arma cada fila del estado de cambios en el patrimonio.'
-  },
-  {
-    type: 'choice', prompt: 'Pagar S/ 10,000 de dividendos en efectivo afecta…',
-    options: [
-      { text: 'El patrimonio y el flujo de efectivo (financiación)' },
-      { text: 'El estado de resultados (gasto)' },
-      { text: 'Solo el flujo de operación' }
-    ],
-    answer: 0, explain: 'Baja el patrimonio y es una salida de financiación.'
+    type: 'choice', prompt: 'Pagas hoy un servicio de ciberseguridad por 2 años. La parte que corresponde al próximo año, ¿cómo se registra hoy?',
+    options: [{ text: 'Como activo: servicios pagados por anticipado' }, { text: 'Como gasto de este año' }, { text: 'Como pasivo' }],
+    answer: 0, pista: '¿Ya recibiste el servicio del próximo año?',
+    explain: 'Lo pagado por un servicio que aún no se recibe es un activo; se convierte en gasto cuando se usa (devengo).'
   }
 ] };
 
 FC.CONTENIDO.n3ex = { ejercicios: [
   {
-    type: 'clasificar', prompt: 'Clasifica cada flujo de efectivo',
-    grupos: ['Operación', 'Inversión', 'Financiación'],
-    items: [
-      { text: 'Pago de impuesto a la renta', grupo: 0 }, { text: 'Compra de software', grupo: 1 },
-      { text: 'Intereses pagados', grupo: 2 }, { text: 'Cobro a clientes', grupo: 0 }, { text: 'Amortización de un préstamo', grupo: 2 }
-    ],
-    explain: 'Los impuestos y los clientes son operación; el software, inversión; los intereses y el préstamo, financiación.'
+    type: 'choice', prompt: 'Si los socios aportan capital en efectivo, ¿en qué actividad del flujo de efectivo se presenta?',
+    options: [{ text: 'Actividades de financiación' }, { text: 'Actividades de operación' }, { text: 'Actividades de inversión' }],
+    answer: 0, explain: 'Los aportes de los dueños y los préstamos son actividades de financiación.'
   },
   {
-    type: 'tf', statement: 'Un aporte de capital en efectivo es un flujo de financiación.', answer: true,
-    explain: 'Los aportes de los dueños son financiación.'
+    type: 'choice', prompt: 'La compra al contado de una máquina, ¿en qué actividad del flujo de efectivo se presenta?',
+    options: [{ text: 'Actividades de inversión' }, { text: 'Actividades de operación' }, { text: 'Actividades de financiación' }],
+    answer: 0, explain: 'Comprar activos de largo plazo es una actividad de inversión.'
   },
   {
-    type: 'choice', prompt: 'Resultado operativo S/ 50,000, depreciación S/ 12,000 y aumento de inventarios S/ 7,000. ¿Flujo de operación (sin otros ajustes)?',
-    options: [{ text: 'S/ 55,000' }, { text: 'S/ 69,000' }, { text: 'S/ 31,000' }],
-    answer: 0, explain: 'S/ 50,000 + S/ 12,000 − S/ 7,000 = S/ 55,000.'
+    type: 'choice',
+    escena: { personaje: 'cafe', nombre: 'Rosa · gerente de una cafetería', texto: 'Tomamos la cafetera en leasing financiero: no pagamos nada hoy.' },
+    prompt: '¿Qué pasó con el pasivo total?',
+    options: FC.ANALISIS, answer: AUMENTO,
+    explain: 'Se reconoce un pasivo por arrendamiento (y un activo por derecho de uso).'
   },
   {
-    type: 'choice', prompt: 'Los dividendos cobrados por una inversión en acciones se clasifican en…',
-    options: [{ text: 'Inversión' }, { text: 'Operación' }, { text: 'Financiación' }],
-    answer: 0, explain: 'Según la NIC 7 modificada, los intereses y dividendos cobrados son inversión.'
+    type: 'choice',
+    escena: { personaje: 'cafe', nombre: 'Rosa · gerente de una cafetería', texto: 'Decidimos no comprar la cafetera nueva este año.' },
+    prompt: '¿Qué pasó con el endeudamiento proyectado?',
+    options: FC.ANALISIS, answer: NO_CAMBIO,
+    explain: 'Sin compra ni financiamiento nuevo, el endeudamiento queda igual.'
   },
   {
-    type: 'tf', statement: 'La reserva legal se forma con al menos el 10 % de la utilidad distribuible, hasta llegar al 20 % del capital.',
-    answer: true, explain: 'Es lo que establece la Ley General de Sociedades.'
+    type: 'tf', statement: 'Un aporte de capital de los socios genera gastos por intereses.',
+    answer: false, explain: 'El aporte es patrimonio: no genera intereses. Los socios esperan dividendos, que no son gasto.'
   },
   {
-    type: 'choice', prompt: '¿Qué transacción NO aparece en el estado de flujos de efectivo?',
-    options: [{ text: 'Convertir una deuda en capital' }, { text: 'Pagar a proveedores' }, { text: 'Recibir un préstamo' }],
-    answer: 0, explain: 'No mueve efectivo: se revela en las notas.'
-  },
-  {
-    type: 'match', prompt: 'Une cada partida con el estado donde se ve',
-    pairs: [['Dividendos declarados', 'Cambios en el patrimonio'], ['Intereses pagados', 'Flujos de efectivo'], ['Gasto por intereses', 'Resultados']],
-    explain: 'Una misma operación puede verse en varios estados con distinto enfoque.'
+    type: 'fill', prompt: 'Completa la frase', sentence: 'Con un leasing financiero se reconoce un activo por derecho de ___.',
+    options: ['uso', 'cobro', 'propiedad'], answer: 0,
+    explain: 'NIIF 16: activo por derecho de uso y pasivo por arrendamiento.'
   }
 ] };

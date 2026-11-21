@@ -28,29 +28,31 @@ FC.Sonido = (() => {
 FC.Ejercicios = (() => {
   const h = html => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
   const mezclar = arr => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-  const etiqueta = (texto, icono = '✨') => `<div class="ej-etiqueta">${icono} ${texto}</div>`;
+  const etiqueta = (texto, icono = 'comodin') => `<div class="ej-etiqueta">${FC.icono(icono)} ${texto}</div>`;
 
   function teoria(ej, cont) {
     cont.append(h(`<div class="contenido">
-      ${etiqueta('Nuevo concepto', '💡')}
+      ${etiqueta('Nuevo concepto', 'foco')}
       <h1 class="ej-pregunta">${ej.titulo}</h1>
-      <div class="teoria-cabecera"><div class="mascota">🦙</div><div class="burbuja">${ej.intro}</div></div>
+      <div class="teoria-cabecera"><div class="mascota">${FC.ico('pizarra')}</div><div class="burbuja">${ej.intro}</div></div>
       <div class="teoria-puntos">${ej.puntos.map(p => `
-        <div class="tarjeta teoria-punto"><div class="emoji">${p.icono}</div><div><h4>${p.titulo}</h4><p>${p.texto}</p></div></div>`).join('')}</div>
+        <div class="tarjeta teoria-punto"><div class="emoji">${FC.icono(p.icono)}</div><div><h4>${p.titulo}</h4><p>${p.texto}</p></div></div>`).join('')}</div>
     </div>`));
     return { calificable: false, listo: () => true, comprobar: () => ({ correcto: true }) };
   }
 
   function choice(ej, cont, { alCambiar }) {
-    const orden = mezclar(ej.options.map((o, i) => ({ ...o, i })));
+    // Las opciones de análisis (Aumentó / Disminuyó / No cambió) van en orden fijo, como en el reto
+    const conIndice = ej.options.map((o, i) => ({ ...o, i }));
+    const orden = ej.options === FC.ANALISIS ? conIndice : mezclar(conIndice);
     let elegido = null;
-    const escena = ej.escena ? `<div class="escena"><div class="personaje">${ej.escena.personaje}</div><div class="burbuja"><small>${ej.escena.nombre}</small>${ej.escena.texto}</div></div>` : '';
+    const escena = ej.escena ? `<div class="escena"><div class="personaje">${FC.icono(ej.escena.personaje)}</div><div class="burbuja"><small>${ej.escena.nombre}</small>${ej.escena.texto}</div></div>` : '';
     const el = h(`<div class="contenido">
-      ${etiqueta(ej.escena ? 'Caso práctico' : 'Elige la respuesta correcta', ej.escena ? '🎭' : '✨')}
+      ${etiqueta(ej.escena ? 'Mini-caso: analiza la decisión' : 'Elige la respuesta correcta', ej.escena ? 'brujula' : 'comodin')}
       ${escena}
       <h1 class="ej-pregunta">${ej.prompt}</h1>
       <div class="opciones">${orden.map((o, k) => `
-        <button class="opcion" data-i="${o.i}"><span class="tecla">${k + 1}</span>${o.icono ? `<span class="emoji">${o.icono}</span>` : ''}<span>${o.text}</span></button>`).join('')}</div>
+        <button class="opcion" data-i="${o.i}"><span class="tecla">${k + 1}</span>${o.icono ? `<span class="emoji">${FC.icono(o.icono)}</span>` : ''}<span>${o.text}</span></button>`).join('')}</div>
     </div>`);
     cont.append(el);
     const botones = [...el.querySelectorAll('.opcion')];
@@ -75,11 +77,11 @@ FC.Ejercicios = (() => {
   function tf(ej, cont, { alCambiar }) {
     let elegido = null;
     const el = h(`<div class="contenido">
-      ${etiqueta('¿Verdadero o falso?', '⚖️')}
+      ${etiqueta('¿Verdadero o falso?', 'balanza')}
       <div class="tarjeta afirmacion">${ej.statement}</div>
       <div class="opciones dos-col">
-        <button class="opcion tf" data-v="true"><span class="emoji">👍</span>Verdadero</button>
-        <button class="opcion tf" data-v="false"><span class="emoji">👎</span>Falso</button>
+        <button class="opcion tf" data-v="true"><span class="emoji">${FC.ico('check')}</span>Verdadero</button>
+        <button class="opcion tf" data-v="false"><span class="emoji">${FC.ico('equis')}</span>Falso</button>
       </div>
     </div>`);
     cont.append(el);
@@ -107,7 +109,7 @@ FC.Ejercicios = (() => {
     let elegido = null;
     const [antes, despues] = ej.sentence.split('___');
     const el = h(`<div class="contenido">
-      ${etiqueta(ej.prompt, '✏️')}
+      ${etiqueta(ej.prompt, 'notas')}
       <div class="tarjeta oracion">${antes}<span class="hueco">&nbsp;</span>${despues}</div>
       <div class="opciones chips">${orden.map(o => `<button class="opcion" data-i="${o.i}">${o.text}</button>`).join('')}</div>
     </div>`);
@@ -138,7 +140,7 @@ FC.Ejercicios = (() => {
     let sel = { izq: null, der: null }, hechos = 0, errores = 0;
     const col = (items, lado) => items.map(o => `<button class="opcion" data-i="${o.i}" data-lado="${lado}">${o.text}</button>`).join('');
     const el = h(`<div class="contenido">
-      ${etiqueta('Emparejar', '🔗')}
+      ${etiqueta('Emparejar', 'ciclo')}
       <h1 class="ej-pregunta">${ej.prompt}</h1>
       <div class="emparejar"><div class="columna">${col(izq, 'izq')}</div><div class="columna">${col(der, 'der')}</div></div>
     </div>`);
@@ -171,7 +173,7 @@ FC.Ejercicios = (() => {
     const ubicacion = {}; // i → grupo
     let activa = null, bloqueado = false;
     const el = h(`<div class="contenido">
-      ${etiqueta('Clasificar', '🗂️')}
+      ${etiqueta('Clasificar', 'capas')}
       <h1 class="ej-pregunta">${ej.prompt}</h1>
       <div class="clasif-items"></div>
       <div class="grupos">${ej.grupos.map((g, k) => `<button type="button" class="grupo" data-g="${k}"><h4>${g}</h4><div class="lista"></div></button>`).join('')}</div>

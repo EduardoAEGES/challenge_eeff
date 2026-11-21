@@ -162,7 +162,7 @@ FC.App = (() => {
   function vPanel() {
     if (!P) return `<div class="tarjeta panel-tarjeta"><h3>${FC.ico('trofeo')} Financial Challenge</h3><p>Crea tu cuenta o entra para empezar tu ruta.</p></div>`;
     const totalLec = FC.NIVELES.filter(n => n.lecciones).reduce((a, n) => a + n.lecciones.length, 0);
-    const hechas = Object.values(prog().lecciones).filter(l => l.aprobada).length;
+    const hechas = IDS_LECCIONES.filter(id => prog().lecciones[id]?.aprobada).length;
     const iniciales = P.nombre.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
     const c = prog().corazones;
     return `
@@ -532,6 +532,8 @@ FC.App = (() => {
           : '<p class="muted">Aún no hay respuestas.</p>'}
       </div></div>`;
   }
+  const IDS_LECCIONES = FC.NIVELES.filter(n => n.lecciones).flatMap(n => n.lecciones.map(l => l.id));
+  const TOTAL_LECCIONES = FC.NIVELES.filter(n => n.lecciones).reduce((a, n) => a + n.lecciones.length, 0);
   function vMaster() {
     if (!esMaster()) {
       return `<h1 class="vista-titulo">${FC.ico('llave')} Acceso master</h1>
@@ -554,7 +556,7 @@ FC.App = (() => {
     const terminaron = n => lista.filter(p => p.resultados?.[n]).length;
     const nombreNivel = n => FC.NIVELES.find(x => x.n === n).etapa;
     const filas = lista.map(p => {
-      const hechas = Object.values(p.progreso?.lecciones || {}).filter(l => l.aprobada).length;
+      const hechas = IDS_LECCIONES.filter(id => p.progreso?.lecciones?.[id]?.aprobada).length;
       const celdaNivel = n => p.resultados?.[n] ? `<span class="chip dorado">${p.resultados[n].puntaje} pts</span>` : p.habilitado.includes(n) ? '<span class="chip verde">Habilitado</span>' : '<span class="chip">—</span>';
       return `<tr>
         <td><input type="checkbox" class="sel" data-id="${p.id}" ${m.sel.has(p.id) ? 'checked' : ''}></td>
@@ -563,7 +565,7 @@ FC.App = (() => {
         <td><small class="actividad"><b>${actividad(p)}</b></small></td>
         <td>@${esc(p.usuario)}</td>
         <td><code>${m.ver[p.id] || m.ver.todas ? esc(p.clave) : '••••••'}</code> <button class="btn-icono" title="Ver contraseña" data-accion="ver-clave" data-id="${p.id}" style="width:30px;height:30px;font-size:16px">${FC.ico('ojo')}</button></td>
-        <td class="num">${hechas}/16</td>
+        <td class="num">${hechas}/${TOTAL_LECCIONES}</td>
         <td>${asistencia(p)}</td>
         <td>${celdaNivel(6)}</td><td>${celdaNivel(7)}</td>
         <td><button class="btn-icono" title="Eliminar participante" data-accion="borrar-participante" data-id="${p.id}">${FC.ico('papelera')}</button></td>

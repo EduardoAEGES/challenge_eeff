@@ -1,6 +1,6 @@
 /* =========================================================
    RUTA DEL FINANCIAL CHALLENGE
-   Niveles 1 a 4: lecciones tipo Duolingo (teoría + práctica con pistas).
+   Niveles 1 a 4: lecciones cortas enfocadas en los casos (teoría + práctica + mini-casos).
    Niveles 5 a 7: casos de una sola empresa con decisiones ramificadas;
    solo se abren con el desbloqueo del master.
    ========================================================= */
@@ -10,45 +10,41 @@ FC.CONTENIDO = FC.CONTENIDO || {};
 FC.NIVELES = [
   {
     n: 1, tipo: 'lecciones', color: 'verde', icono: 'capas',
-    titulo: 'Fundamentos contables',
-    descripcion: 'Para qué sirven los estados financieros, la ecuación contable, la partida doble y el PCGE.',
+    titulo: 'Leer los estados financieros',
+    descripcion: 'Los cuatro estados, la ecuación contable y por qué la utilidad no es lo mismo que el efectivo.',
     lecciones: [
-      { id: 'n1l1', titulo: 'Los estados financieros', icono: 'libro' },
+      { id: 'n1l1', titulo: 'Los cuatro estados financieros', icono: 'libro' },
       { id: 'n1l2', titulo: 'La ecuación contable', icono: 'balanza' },
-      { id: 'n1l3', titulo: 'Partida doble y PCGE', icono: 'calculadora' },
       { id: 'n1ex', titulo: 'Examen del nivel 1', icono: 'insignia', examen: true }
     ]
   },
   {
-    n: 2, tipo: 'lecciones', color: 'azul', icono: 'barras',
-    titulo: 'Situación financiera y resultados',
-    descripcion: 'El estado de situación financiera y el estado de resultados con la estructura de la NIIF 18.',
+    n: 2, tipo: 'lecciones', color: 'azul', icono: 'ciclo',
+    titulo: 'Capital de trabajo',
+    descripcion: 'Compras y ventas al contado o al crédito, descuentos, factoring, inventario y periodo de cobro.',
     lecciones: [
-      { id: 'n2l1', titulo: 'Estado de situación financiera', icono: 'banco' },
-      { id: 'n2l2', titulo: 'Resultados según la NIIF 18', icono: 'recibo' },
-      { id: 'n2l3', titulo: 'Agregar, desagregar y MPM', icono: 'lupa' },
+      { id: 'n2l1', titulo: 'Compras y ventas: ¿contado o crédito?', icono: 'recibo' },
+      { id: 'n2l2', titulo: 'Cobrar más rápido', icono: 'reloj' },
       { id: 'n2ex', titulo: 'Examen del nivel 2', icono: 'insignia', examen: true }
     ]
   },
   {
-    n: 3, tipo: 'lecciones', color: 'morado', icono: 'gota',
-    titulo: 'Flujos de efectivo y patrimonio',
-    descripcion: 'El estado de flujos de efectivo según la NIC 7 y el estado de cambios en el patrimonio.',
+    n: 3, tipo: 'lecciones', color: 'morado', icono: 'banco',
+    titulo: 'Financiar e invertir',
+    descripcion: 'Préstamo, aporte o leasing (NIIF 16), flujos de efectivo (NIC 7) y categorías de la NIIF 18.',
     lecciones: [
-      { id: 'n3l1', titulo: 'Las tres actividades', icono: 'ciclo' },
-      { id: 'n3l2', titulo: 'Intereses, dividendos y métodos', icono: 'brujula' },
-      { id: 'n3l3', titulo: 'Cambios en el patrimonio', icono: 'banco' },
+      { id: 'n3l1', titulo: '¿Cómo financiar una inversión?', icono: 'calculadora' },
+      { id: 'n3l2', titulo: 'Flujos de efectivo y la NIIF 18', icono: 'gota' },
       { id: 'n3ex', titulo: 'Examen del nivel 3', icono: 'insignia', examen: true }
     ]
   },
   {
     n: 4, tipo: 'lecciones', color: 'naranja', icono: 'medidor',
-    titulo: 'Indicadores y primeras decisiones',
-    descripcion: 'Liquidez, solvencia y rentabilidad, y decisiones guiadas: contado o crédito, préstamo o leasing.',
+    titulo: 'Indicadores y cierre del año',
+    descripcion: 'Liquidez, endeudamiento y ROE (los que dan puntos en el reto) y qué hacer con la utilidad.',
     lecciones: [
-      { id: 'n4l1', titulo: 'Indicadores de liquidez', icono: 'gota' },
-      { id: 'n4l2', titulo: 'Solvencia y rentabilidad', icono: 'tendencia' },
-      { id: 'n4l3', titulo: 'Decisiones con ayuda', icono: 'brujula' },
+      { id: 'n4l1', titulo: 'Los indicadores que cuentan', icono: 'tendencia' },
+      { id: 'n4l2', titulo: 'Cierre: ¿qué hacer con la utilidad?', icono: 'regalo' },
       { id: 'n4ex', titulo: 'Examen del nivel 4', icono: 'insignia', examen: true }
     ]
   },

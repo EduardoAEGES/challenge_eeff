@@ -1,180 +1,133 @@
 /* =========================================================
-   NIVEL 4 — Indicadores y primeras decisiones (con ayuda)
+   NIVEL 4 — Indicadores y cierre del año
+   Liquidez, endeudamiento y ROE (los indicadores que dan o quitan
+   puntos en el reto) y qué hacer con la utilidad.
    ========================================================= */
 window.FC = window.FC || {};
 FC.CONTENIDO = FC.CONTENIDO || {};
 
 FC.CONTENIDO.n4l1 = { ejercicios: [
   {
-    type: 'teoria', titulo: 'Indicadores de liquidez',
-    intro: 'La liquidez mide la capacidad de pagar las deudas de corto plazo.',
+    type: 'teoria', titulo: 'Los indicadores que cuentan en el reto',
+    intro: 'Al terminar el caso, tu puntaje parte de la utilidad neta y suma o resta puntos según estos tres indicadores.',
     puntos: [
-      { icono: '💧', titulo: 'Liquidez corriente', texto: 'Activo corriente ÷ Pasivo corriente. Entre <b>1.5 y 3</b> suele ser sano; menos de 1 es riesgoso; mucho más de 3 puede indicar recursos ociosos.' },
-      { icono: '🧪', titulo: 'Prueba ácida', texto: '(Activo corriente − Inventarios − Pagados por anticipado) ÷ Pasivo corriente. Excluye lo que tarda en convertirse en efectivo.' },
-      { icono: '🧱', titulo: 'Capital de trabajo', texto: 'Activo corriente − Pasivo corriente: el “colchón” en soles para operar.' }
+      { icono: 'gota', titulo: 'Liquidez corriente', texto: 'Activo corriente ÷ Pasivo corriente. Entre <b>1.5 y 3</b> es sano (suma puntos); menos de 1 es riesgoso (resta); más de 3 indica recursos ociosos.' },
+      { icono: 'balanza', titulo: 'Endeudamiento', texto: 'Pasivo total ÷ Activo total. Hasta <b>50 %</b> es prudente (suma); más de 70 % es alto (resta).' },
+      { icono: 'tendencia', titulo: 'ROE', texto: 'Utilidad neta ÷ Patrimonio. Lo que ganan los dueños por cada sol. <b>10 % o más</b> suma puntos; negativo resta.' },
+      { icono: 'alerta', titulo: 'Sobregiro', texto: 'Terminar el año con la caja en negativo resta puntos. Cuida el efectivo, no solo la utilidad.' }
     ]
   },
   {
     type: 'choice', prompt: 'Activo corriente S/ 120,000 y pasivo corriente S/ 60,000. ¿Liquidez corriente?',
     options: [{ text: '2.0' }, { text: '0.5' }, { text: 'S/ 60,000' }],
-    answer: 0, pista: 'Divide, no restes.', explain: 'S/ 120,000 ÷ S/ 60,000 = 2.0.'
+    answer: 0, pista: 'Divide, no restes.', explain: 'S/ 120,000 ÷ S/ 60,000 = 2.0: está en el rango sano.'
   },
   {
-    type: 'choice', prompt: 'Activo corriente S/ 120,000, de los cuales S/ 50,000 son inventarios. Pasivo corriente S/ 60,000. ¿Prueba ácida?',
-    options: [{ text: '1.17' }, { text: '2.0' }, { text: '0.83' }],
-    answer: 0, pista: 'Resta los inventarios del activo corriente antes de dividir.',
-    explain: '(S/ 120,000 − S/ 50,000) ÷ S/ 60,000 = 1.17.'
+    type: 'choice', prompt: 'Pasivo total S/ 70,000 y activo total S/ 100,000. ¿Endeudamiento?',
+    options: [{ text: '70 %' }, { text: '30 %' }, { text: '143 %' }],
+    answer: 0, explain: 'S/ 70,000 ÷ S/ 100,000 = 70 %: en el límite de lo alto.'
   },
   {
-    type: 'tf', statement: 'Una liquidez corriente de 0.8 significa que el activo corriente no alcanza para cubrir el pasivo corriente.',
-    answer: true, explain: 'Por cada sol de deuda de corto plazo hay solo S/ 0.80 de activo corriente.'
+    type: 'choice', prompt: 'Utilidad neta S/ 12,000 y patrimonio S/ 80,000. ¿ROE?',
+    options: [{ text: '15 %' }, { text: '12 %' }, { text: '6.7 %' }],
+    answer: 0, explain: 'S/ 12,000 ÷ S/ 80,000 = 15 %: supera el 10 %.'
   },
   {
-    type: 'choice', prompt: '¿Qué decisión MEJORA la liquidez corriente?',
-    options: [
-      { text: 'Refinanciar una deuda de corto plazo a largo plazo' },
-      { text: 'Comprar maquinaria al contado' },
-      { text: 'Pagar dividendos en efectivo' }
-    ],
-    answer: 0, pista: 'Piensa qué pasa con el pasivo corriente.',
+    type: 'choice',
+    escena: { personaje: 'moda', nombre: 'Andrea · jefa de finanzas de una tienda de ropa', texto: 'Refinanciamos un pagaré de corto plazo y lo convertimos en un préstamo a 3 años.' },
+    prompt: '¿Qué pasó con la liquidez corriente?',
+    options: FC.ANALISIS, answer: AUMENTO,
+    pista: '¿Qué le pasa al pasivo corriente?',
     explain: 'La deuda pasa de corriente a no corriente: baja el pasivo corriente y sube la liquidez.'
   },
   {
-    type: 'fill', prompt: 'Completa la frase', sentence: 'Una liquidez de 6.0 puede indicar ___ ociosos.',
-    options: ['recursos', 'pasivos', 'gastos'], answer: 0,
-    explain: 'Mucho efectivo sin uso también es mala gestión: no genera rentabilidad.'
+    type: 'choice',
+    escena: { personaje: 'moda', nombre: 'Andrea · jefa de finanzas de una tienda de ropa', texto: 'Usamos S/ 40,000 de la caja para prepagar parte del préstamo bancario.' },
+    prompt: '¿Qué pasó con el endeudamiento?',
+    options: FC.ANALISIS, answer: DISMINUYO,
+    explain: 'Bajan el pasivo y el activo en el mismo monto; como el pasivo es menor que el activo, el endeudamiento baja.'
   }
 ] };
 
 FC.CONTENIDO.n4l2 = { ejercicios: [
   {
-    type: 'teoria', titulo: 'Solvencia y rentabilidad',
-    intro: 'La solvencia mide cuánto depende la empresa de la deuda; la rentabilidad, cuánto gana con sus recursos.',
+    type: 'teoria', titulo: 'Cierre del año: ¿qué hacer con la utilidad?',
+    intro: 'La última decisión de los casos es qué hacer con la utilidad. Todas se ven en el <b>estado de cambios en el patrimonio</b>.',
     puntos: [
-      { icono: '⚓', titulo: 'Endeudamiento', texto: 'Pasivo total ÷ Activo total. Hasta 50 % suele ser prudente; más de 70 % es alto.' },
-      { icono: '🛡️', titulo: 'Cobertura de intereses', texto: 'Resultado operativo ÷ Gastos por intereses. Cuántas veces el negocio “paga” sus intereses.' },
-      { icono: '📈', titulo: 'ROA y ROE', texto: 'ROA = Utilidad neta ÷ Activo total. ROE = Utilidad neta ÷ Patrimonio: lo que ganan los dueños por cada sol invertido.' },
-      { icono: '🧾', titulo: 'Margen neto', texto: 'Utilidad neta ÷ Ventas: cuánto queda de cada sol vendido.' }
-    ]
-  },
-  {
-    type: 'choice', prompt: 'Pasivo S/ 140,000 y activo S/ 200,000. ¿Endeudamiento?',
-    options: [{ text: '70 %' }, { text: '30 %' }, { text: '143 %' }],
-    answer: 0, explain: 'S/ 140,000 ÷ S/ 200,000 = 70 %: un nivel alto.'
-  },
-  {
-    type: 'choice', prompt: 'Utilidad neta S/ 18,000 y patrimonio S/ 120,000. ¿ROE?',
-    options: [{ text: '15 %' }, { text: '6.7 %' }, { text: '1.5 %' }],
-    answer: 0, pista: 'ROE = Utilidad neta ÷ Patrimonio.', explain: 'S/ 18,000 ÷ S/ 120,000 = 15 %.'
-  },
-  {
-    type: 'tf', statement: 'Financiar una inversión con deuda en vez de aportes puede subir el ROE, pero también el riesgo.',
-    answer: true, explain: 'Con menos patrimonio, la misma utilidad rinde más para los dueños, pero sube el endeudamiento y los intereses.'
-  },
-  {
-    type: 'match', prompt: 'Une cada indicador con su fórmula',
-    pairs: [
-      ['Endeudamiento', 'Pasivo ÷ Activo'],
-      ['ROE', 'Utilidad neta ÷ Patrimonio'],
-      ['Margen neto', 'Utilidad neta ÷ Ventas'],
-      ['Cobertura de intereses', 'Resultado operativo ÷ Intereses']
-    ],
-    explain: 'Cada indicador mira la empresa desde un ángulo distinto.'
-  },
-  {
-    type: 'choice', prompt: 'Resultado operativo S/ 30,000 e intereses S/ 15,000. La cobertura es 2 veces. ¿Cómo se interpreta?',
-    options: [{ text: 'Ajustada: un mal año podría impedir pagar los intereses' }, { text: 'Excelente: sobra mucho' }, { text: 'La empresa ya no puede pagar' }],
-    answer: 0, explain: 'Por debajo de 3 veces conviene vigilar la deuda.'
-  }
-] };
-
-FC.CONTENIDO.n4l3 = { ejercicios: [
-  {
-    type: 'teoria', titulo: 'Decisiones con ayuda',
-    intro: 'Cada decisión empresarial se ve distinta en cada estado financiero. Antes de decidir, pregúntate: <b>¿qué pasa con la caja, la deuda y la utilidad?</b>',
-    puntos: [
-      { icono: '💵', titulo: 'Contado con descuento', texto: 'Baja el costo y sube la utilidad, pero sale efectivo hoy.' },
-      { icono: '🕒', titulo: 'Crédito de proveedores', texto: 'Cuida la caja, pero sube el pasivo corriente y puede costar un recargo.' },
-      { icono: '🏦', titulo: 'Préstamo', texto: 'Entra efectivo (financiación); luego hay intereses en resultados y más endeudamiento.' },
-      { icono: '📄', titulo: 'Leasing (NIIF 16)', texto: 'Se reconoce un activo por derecho de uso y un pasivo por arrendamiento, sin salida inicial de efectivo.' }
+      { icono: 'regalo', titulo: 'Repartir dividendos', texto: 'Sale efectivo hacia los socios y baja el patrimonio.' },
+      { icono: 'banco', titulo: 'Reserva legal', texto: 'Se separa el 10 % de la utilidad (hasta llegar al 20 % del capital). No sale efectivo y el patrimonio total no cambia: cambia su composición.' },
+      { icono: 'capas', titulo: 'Capitalizar', texto: 'La utilidad pasa a capital social. Tampoco sale efectivo ni cambia el patrimonio total.' },
+      { icono: 'tendencia', titulo: 'Prepagar deuda', texto: 'Sale efectivo y baja el pasivo: el endeudamiento mejora.' }
     ]
   },
   {
     type: 'choice',
-    escena: { personaje: '🧑🏻‍💼', nombre: 'Daniel, contador', texto: 'El proveedor nos da 3 % de descuento si pagamos al contado. Tenemos caja de sobra y liquidez de 4.0.' },
-    prompt: '¿Qué te conviene?',
-    options: [{ text: 'Pagar al contado y aprovechar el descuento' }, { text: 'Pedir crédito a 60 días con recargo' }, { text: 'No comprar' }],
-    answer: 0, pista: 'Con caja de sobra, ¿para qué pagar un recargo?',
-    explain: 'Con exceso de liquidez, el descuento mejora el margen sin poner en riesgo los pagos.'
+    escena: { personaje: 'usuarios', nombre: 'Socios de la empresa', texto: 'Queremos repartir el 50 % de la utilidad en dividendos.' },
+    prompt: '¿Qué pasó con el efectivo al cierre?',
+    options: FC.ANALISIS, answer: DISMINUYO,
+    explain: 'Los dividendos se pagan en efectivo: la caja baja.'
   },
   {
     type: 'choice',
-    escena: { personaje: '👩🏽‍💼', nombre: 'Laura', texto: 'Necesito una máquina de S/ 60,000, pero tengo solo S/ 20,000 en caja.' },
-    prompt: '¿Qué alternativa evita quedarse sin efectivo?',
-    options: [{ text: 'Préstamo bancario o leasing' }, { text: 'Pagarla al contado' }, { text: 'Repartir dividendos primero' }],
-    answer: 0, pista: 'Pagar S/ 60,000 con S/ 20,000 deja la caja en negativo.',
-    explain: 'Pagarla al contado provocaría un sobregiro; financiarla protege la liquidez.'
+    escena: { personaje: 'usuarios', nombre: 'Socios de la empresa', texto: 'Mejor constituimos la reserva legal del 10 %.' },
+    prompt: '¿Qué pasó con el efectivo al cierre?',
+    options: FC.ANALISIS, answer: NO_CAMBIO,
+    explain: 'La reserva es un movimiento dentro del patrimonio: no sale efectivo.'
   },
   {
-    type: 'tf', statement: 'Con un leasing financiero, la máquina aparece en el estado de situación financiera como activo por derecho de uso.',
-    answer: true, explain: 'Según la NIIF 16, el arrendatario reconoce el derecho de uso y el pasivo por arrendamiento.'
+    type: 'choice',
+    escena: { personaje: 'usuarios', nombre: 'Socios de la empresa', texto: 'Al final repartimos dividendos en efectivo.' },
+    prompt: '¿Qué pasó con el endeudamiento (pasivo ÷ activo)?',
+    options: FC.ANALISIS, answer: AUMENTO,
+    pista: 'El pasivo queda igual, pero ¿qué pasa con el activo?',
+    explain: 'Sale efectivo, así que el activo baja mientras el pasivo sigue igual: el endeudamiento sube.'
   },
   {
-    type: 'choice', prompt: 'Vendes a 60 días en lugar de al contado. ¿Qué ocurre con mayor probabilidad?',
-    options: [
-      { text: 'Suben las ventas y las cuentas por cobrar, pero la caja crece menos' },
-      { text: 'Baja la utilidad y sube la caja' },
-      { text: 'No cambia nada' }
-    ],
-    answer: 0, explain: 'El crédito atrae clientes, pero el dinero llega después y hay riesgo de incobrables.'
-  },
-  {
-    type: 'clasificar', prompt: '¿Qué efecto principal tiene cada decisión?',
-    grupos: ['Sube el endeudamiento', 'Baja la caja hoy', 'Sube el patrimonio'],
-    items: [
-      { text: 'Préstamo bancario', grupo: 0 }, { text: 'Comprar al contado', grupo: 1 }, { text: 'Aporte de socios', grupo: 2 }, { text: 'Pagar dividendos', grupo: 1 }
-    ],
-    pista: 'Piensa en la ecuación contable de cada operación.',
-    explain: 'La deuda sube con el préstamo; la caja baja al pagar; el aporte aumenta el capital.'
+    type: 'tf', statement: 'Capitalizar la utilidad aumenta el patrimonio total de la empresa.',
+    answer: false, explain: 'La utilidad ya era patrimonio (resultados acumulados); solo pasa a capital social. El total no cambia.'
   }
 ] };
 
 FC.CONTENIDO.n4ex = { ejercicios: [
   {
-    type: 'choice', prompt: 'Activo corriente S/ 45,000 y pasivo corriente S/ 50,000. ¿Cómo está la liquidez?',
-    options: [{ text: 'En riesgo: 0.9' }, { text: 'Sana: 1.5' }, { text: 'Excesiva: 5.0' }],
-    answer: 0, explain: '45,000 ÷ 50,000 = 0.9, menor a 1.'
+    type: 'choice', prompt: '¿Qué liquidez corriente suma puntos en el reto por ser sana?',
+    options: [{ text: 'Entre 1.5 y 3' }, { text: 'Menor a 1' }, { text: 'Mayor a 6' }],
+    answer: 0, explain: 'Menos de 1 es riesgoso y mucho más de 3 indica recursos ociosos.'
   },
   {
-    type: 'choice', prompt: 'Para mejorar esa liquidez, ¿qué harías?',
-    options: [{ text: 'Refinanciar parte de la deuda a largo plazo' }, { text: 'Comprar un local al contado' }, { text: 'Pagar dividendos' }],
-    answer: 0, explain: 'Pasar deuda al largo plazo reduce el pasivo corriente.'
+    type: 'choice', prompt: 'Activo corriente S/ 90,000 y pasivo corriente S/ 100,000. ¿Cómo está la liquidez?',
+    options: [{ text: '0.9: riesgosa, no alcanza para la deuda de corto plazo' }, { text: '1.1: sana' }, { text: '9.0: con recursos ociosos' }],
+    answer: 0, explain: 'S/ 90,000 ÷ S/ 100,000 = 0.9: por cada sol de deuda de corto plazo hay solo S/ 0.90.'
   },
   {
-    type: 'tf', statement: 'Un ROE alto siempre significa que la empresa está sana.',
-    answer: false, explain: 'Puede venir de un endeudamiento muy alto: hay que mirarlo junto a la solvencia y la liquidez.'
+    type: 'choice',
+    escena: { personaje: 'cafe', nombre: 'Rosa · gerente de una cafetería', texto: 'Compramos una máquina al contado con el efectivo de la caja.' },
+    prompt: '¿Qué pasó con la liquidez corriente?',
+    options: FC.ANALISIS, answer: DISMINUYO,
+    explain: 'Sale efectivo (activo corriente) y entra una máquina (activo no corriente): baja la liquidez.'
   },
   {
-    type: 'choice', prompt: 'Utilidad neta S/ 12,000 y ventas S/ 240,000. ¿Margen neto?',
-    options: [{ text: '5 %' }, { text: '20 %' }, { text: '0.5 %' }],
-    answer: 0, explain: 'S/ 12,000 ÷ S/ 240,000 = 5 %.'
+    type: 'choice',
+    escena: { personaje: 'usuarios', nombre: 'Socios de la empresa', texto: 'Aportamos S/ 50,000 en efectivo.' },
+    prompt: '¿Qué pasó con la liquidez corriente?',
+    options: FC.ANALISIS, answer: AUMENTO,
+    explain: 'Sube el efectivo (activo corriente) y el pasivo corriente no cambia.'
   },
   {
-    type: 'match', prompt: 'Une cada decisión con dónde se ve primero',
-    pairs: [
-      ['Préstamo recibido', 'Flujo de financiación'],
-      ['Compra de maquinaria al contado', 'Flujo de inversión'],
-      ['Descuento por pronto pago', 'Menor costo de ventas']
-    ],
-    explain: 'Cada decisión deja huella en un estado distinto.'
+    type: 'choice',
+    escena: { personaje: 'usuarios', nombre: 'Socios de la empresa', texto: 'Decidimos capitalizar toda la utilidad del año.' },
+    prompt: '¿Qué pasó con el endeudamiento?',
+    options: FC.ANALISIS, answer: NO_CAMBIO,
+    explain: 'No cambian ni el activo ni el pasivo: solo se reordena el patrimonio.'
   },
   {
-    type: 'choice', prompt: 'Endeudamiento 82 % y cobertura de intereses 1.2 veces. ¿Qué recomendarías?',
-    options: [{ text: 'Aporte de socios o prepagar deuda' }, { text: 'Tomar otro préstamo' }, { text: 'Repartir todas las utilidades' }],
-    answer: 0, explain: 'Con tanta deuda, fortalecer el patrimonio o reducir pasivos baja el riesgo.'
+    type: 'tf', statement: 'Un ROE negativo significa que la empresa tuvo pérdida en el año.',
+    answer: true, explain: 'Si la utilidad neta es negativa, el ROE también lo es (y en el reto resta puntos).'
   },
   {
-    type: 'tf', statement: 'Vender al crédito puede aumentar la utilidad y, al mismo tiempo, generar un sobregiro.',
-    answer: true, explain: 'La utilidad se reconoce al vender; el efectivo llega al cobrar.'
+    type: 'choice', prompt: 'Con la misma utilidad, ¿qué decisión hace que el ROE sea más alto?',
+    options: [{ text: 'Financiar con préstamo en lugar de aporte' }, { text: 'Financiar con aporte de socios' }, { text: 'Ninguna: el ROE no depende del patrimonio' }],
+    answer: 0, pista: 'ROE = Utilidad ÷ Patrimonio.',
+    explain: 'Con préstamo el patrimonio es menor, así que cada sol de utilidad pesa más. Pero ojo: los intereses bajan la utilidad y el endeudamiento sube.'
   }
 ] };

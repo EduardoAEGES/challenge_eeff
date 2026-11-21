@@ -152,7 +152,7 @@ FC.Leccion = (() => {
   function verTeoria(origen) {
     const html = teoriasDe(origen).map(t => `<h2 style="font-size:22px;font-weight:900;margin-bottom:8px">${t.titulo}</h2>
       <p style="font-weight:600;line-height:1.5;margin-bottom:12px">${t.intro}</p>
-      <div class="teoria-puntos">${t.puntos.map(p => `<div class="tarjeta teoria-punto"><div class="emoji">${p.icono}</div><div><h4>${p.titulo}</h4><p>${p.texto}</p></div></div>`).join('')}</div>`).join('<hr style="margin:18px 0;border:0;border-top:2px solid var(--borde)">');
+      <div class="teoria-puntos">${t.puntos.map(p => `<div class="tarjeta teoria-punto"><div class="emoji">${FC.icono(p.icono)}</div><div><h4>${p.titulo}</h4><p>${p.texto}</p></div></div>`).join('')}</div>`).join('<hr style="margin:18px 0;border:0;border-top:2px solid var(--borde)">');
     FC.App.modal(html);
   }
 
