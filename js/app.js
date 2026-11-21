@@ -87,6 +87,10 @@ FC.App = (() => {
     $('vista').innerHTML = bannerDemo() + (vistas[ui.vista] || vRuta)();
     $('panel').innerHTML = vPanel();
     renderEncuesta();
+    if (P && !P.demo && !ui.etapaFinalMostrada && etapaPreviaCompleta() && !prog().invitacion && $('modal').hidden && $('leccion').hidden && $('caso').hidden) {
+      ui.etapaFinalMostrada = true;
+      setTimeout(() => abrirEtapaFinal(), 400);
+    }
     enlazar();
   }
 
@@ -115,7 +119,7 @@ FC.App = (() => {
         <button class="btn btn-certus btn-bloque" type="submit">${registro ? 'Crear mi cuenta' : 'Entrar'}</button>
       </form>
       <button class="enlace" type="button" data-accion="ir-master" style="align-self:center">Soy el facilitador (master)</button>
-      <a class="patrocinador acceso-patrocinador" href="https://gabineteestrategicodigital.com" target="_blank" rel="noopener">Patrocinado por <b>Gabinete Estratégico Digital E.I.R.L.</b></a>
+      <a class="patrocinador acceso-patrocinador" href="https://gabineteestrategicodigital.com/" target="_blank" rel="noopener">Patrocinado por <b>Gabinete Estratégico Digital E.I.R.L.</b></a>
       ${FC.Datos.modo === 'local' ? '<p class="nota-acceso">Modo local: las cuentas se guardan solo en esta computadora.</p>' : ''}`;
   }
 
@@ -292,6 +296,7 @@ FC.App = (() => {
 
   // ---------- Antes de la invitación: encuesta NPS ----------
   // Orden: 1) NPS  2) invitación con el formulario de inscripción
+  const modalCompleta = html => modal(html, false, true);
   function abrirEtapaFinal(primeraVez = false) {
     if (!P) return;
     if (!prog().nps) return abrirNps(primeraVez);
@@ -301,7 +306,7 @@ FC.App = (() => {
   const nps = { valor: null, motivo: '', error: null };
   function abrirNps(celebrar = false) {
     const nombre = esc((P.nombre || '').split(' ')[0] || P.usuario);
-    modal(`<div class="paso-final">
+    modalCompleta(`<div class="paso-final">
       <div class="pasos-indicador"><span class="activo">1. Tu opinión</span><span>2. Inscripción</span></div>
       <div class="nps-cab">${FC.ico('trofeo')}<div><small>¡Completaste la etapa previa, ${nombre}!</small><h2>Antes de tu invitación, una pregunta rápida</h2></div></div>
       <form id="form-nps" class="nps-form">
@@ -333,7 +338,7 @@ FC.App = (() => {
     const mostrarForm = !r?.respuesta || inv.editando;
     const yaConfirmado = r?.respuesta === 'si';
     const lleno = inv.cupos && inv.cupos.confirmados >= inv.cupos.limite && !yaConfirmado;
-    modal(`<div class="invita">
+    modalCompleta(`<div class="invita">
       <div class="invita-cab${primeraVez ? '' : ' sin-anim'}">
         <div class="invita-brillos" aria-hidden="true">${'<i></i>'.repeat(14)}</div>
         <div class="invita-trofeo">${FC.ico('trofeo')}</div>
@@ -433,8 +438,10 @@ FC.App = (() => {
           prog().xp += res.xp;
           guardarP();
         }
+        const recienTermino = !P.demo && !antes && etapaPreviaCompleta() && !invitacion();
+        if (recienTermino) ui.etapaFinalMostrada = true; // la abre abajo, con la celebración
         render();
-        if (!P.demo && !antes && etapaPreviaCompleta() && !invitacion()) setTimeout(() => abrirEtapaFinal(true), 350);
+        if (recienTermino) setTimeout(() => abrirEtapaFinal(true), 350);
       }
     });
   }
@@ -898,9 +905,10 @@ FC.App = (() => {
   });
 
   // ---------- Modal ----------
-  function modal(html, grande = false) {
+  function modal(html, grande = false, completa = false) {
     $('modal-contenido').innerHTML = html;
     $('modal').classList.toggle('grande', grande);
+    $('modal').classList.toggle('completa', completa);
     $('modal').hidden = false;
   }
   function cerrarModal() { $('modal').hidden = true; }
