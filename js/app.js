@@ -183,6 +183,7 @@ FC.App = (() => {
         <div class="emoji">${FC.ico('barras')}</div>
       </header>
       ${prog().corazones === 0 && !P.demo ? `<div class="banner-demo"><span class="emoji">${FC.ico('corazonRoto')}</span><p>Te quedaste sin corazones. Haz una sesión corta de repaso para recuperar 2 y seguir con tus lecciones.</p><button class="btn btn-chico" data-accion="repaso">${FC.ico('repetir')} Ir al repaso</button></div>` : ''}
+      ${bannerInvitacion()}
       <div class="ruta">${FC.NIVELES.map(nv => (nv.lecciones ? unidadLecciones(nv) : nv.subniveles ? unidadGuiada(nv) : unidadCaso(nv))).join('')}</div>`;
   }
 
@@ -267,6 +268,68 @@ FC.App = (() => {
     };
   }
 
+  // ---------- Invitación a la etapa presencial (al terminar los niveles 1 a 4) ----------
+  const EVENTO = { dia: 'Miércoles', fecha: '25 de noviembre', lugar: 'Laboratorio 8', sede: 'Sede Arequipa' };
+  const etapaPreviaCompleta = () => Boolean(P) && nivelAprobado(4);
+  const invitacion = () => prog().invitacion || null;
+
+  function abrirInvitacion() {
+    if (!P) return;
+    const inv = invitacion();
+    const nombre = esc((P.nombre || '').split(' ')[0] || P.usuario);
+    const respondido = inv?.respuesta;
+    modal(`<div class="invita">
+      <div class="invita-cab">
+        <div class="invita-brillos" aria-hidden="true">${'<i></i>'.repeat(14)}</div>
+        <div class="invita-trofeo">${FC.ico('trofeo')}</div>
+        <small>Etapa previa completada</small>
+        <h2>¡Felicitaciones, ${nombre}!</h2>
+        <p>Aprobaste los niveles 1 a 4. Ya estás listo para la etapa presencial del Financial Challenge.</p>
+      </div>
+      <div class="invita-cuerpo">
+        <div class="invita-ticket">
+          <div class="invita-fecha"><span>${EVENTO.dia}</span><b>25</b><span>Noviembre</span></div>
+          <div class="invita-datos">
+            <h3>Te invitamos a participar</h3>
+            <p>${FC.ico('pizarra')} Clase guiada y competencia en vivo</p>
+            <p>${FC.ico('edificio')} <b>${EVENTO.lugar}</b> · ${EVENTO.sede}</p>
+            <p>${FC.ico('regalo')} Premios para los 3 primeros puestos</p>
+          </div>
+        </div>
+        ${respondido ? `<div class="invita-gracias ${inv.respuesta}">${FC.ico(inv.respuesta === 'si' ? 'check' : 'equis')}
+            <div><b>${inv.respuesta === 'si' ? '¡Tu asistencia está confirmada!' : 'Registramos que no podrás asistir.'}</b>
+            <span>${inv.respuesta === 'si' ? `Te esperamos el ${EVENTO.dia.toLowerCase()} ${EVENTO.fecha} en el ${EVENTO.lugar}.` : 'Si cambias de opinión, puedes actualizar tu respuesta.'}</span></div></div>
+          <button class="btn btn-blanco btn-bloque" type="button" data-accion="invitacion-cambiar">Cambiar mi respuesta</button>`
+        : `<form id="form-invitacion" class="invita-form">
+          <p class="invita-pregunta">¿Asistirás el ${EVENTO.dia.toLowerCase()} ${EVENTO.fecha}?</p>
+          <div class="invita-opciones">
+            <label><input type="radio" name="respuesta" value="si" required><span>${FC.ico('check')} Sí, asistiré</span></label>
+            <label><input type="radio" name="respuesta" value="no"><span>${FC.ico('equis')} No podré asistir</span></label>
+          </div>
+          <div><label class="etiqueta" for="inv-celular">Celular (opcional, para recordatorios)</label>
+            <input class="campo" id="inv-celular" name="celular" inputmode="tel" maxlength="15" placeholder="9XX XXX XXX" value="${esc(inv?.celular || '')}"></div>
+          <button class="btn btn-certus btn-bloque" type="submit">Enviar mi respuesta</button>
+        </form>`}
+      </div></div>`);
+    if (!respondido) { FC.Sonido?.completado?.(); FC.Leccion.confeti(); }
+  }
+
+  function responderInvitacion(f) {
+    const respuesta = f.respuesta.value;
+    if (!respuesta) return;
+    prog().invitacion = { respuesta, celular: f.celular.value.trim().slice(0, 15), fecha: new Date().toISOString() };
+    guardarP();
+    abrirInvitacion();
+    render();
+  }
+
+  const bannerInvitacion = () => (P && !P.demo && etapaPreviaCompleta()
+    ? `<div class="invita-banner"><span class="invita-banner-ic">${FC.ico('trofeo')}</span>
+        <div><b>${invitacion()?.respuesta === 'si' ? 'Asistencia confirmada' : '¡Completaste la etapa previa!'}</b>
+        <span>${EVENTO.dia} ${EVENTO.fecha} · ${EVENTO.lugar} · ${EVENTO.sede}</span></div>
+        <button class="btn btn-chico ${invitacion() ? 'btn-blanco' : 'btn-certus'}" data-accion="invitacion">${invitacion() ? 'Ver invitación' : 'Responder invitación'}</button></div>`
+    : '');
+
   function abrirLeccion(id) {
     const info = FC.leccionPorId(id);
     const i = info.nivel.lecciones.findIndex(l => l.id === id);
@@ -275,6 +338,7 @@ FC.App = (() => {
     FC.Leccion.abrir(id, {
       ...opcionesLeccion(info.nivel.n),
       alTerminar: res => {
+        const antes = etapaPreviaCompleta();
         if (res && !P.demo) {
           const previo = prog().lecciones[id];
           if (!previo || res.precision >= previo.precision || (res.aprobada && !previo.aprobada)) {
@@ -284,6 +348,7 @@ FC.App = (() => {
           guardarP();
         }
         render();
+        if (!P.demo && !antes && etapaPreviaCompleta() && !invitacion()) setTimeout(abrirInvitacion, 350);
       }
     });
   }
@@ -379,6 +444,12 @@ FC.App = (() => {
     const lec = Object.entries(p.progreso?.lecciones || {}).filter(([, l]) => l.aprobada);
     return lec.length ? `${FC.ico('libro')} Lecciones (${lec.length} aprobadas)` : '— Sin actividad';
   }
+  function asistencia(p) {
+    const r = p.progreso?.invitacion?.respuesta;
+    if (r === 'si') return `<span class="chip verde" title="${esc(p.progreso.invitacion.celular || '')}">Asistirá</span>`;
+    if (r === 'no') return '<span class="chip">No asistirá</span>';
+    return p.progreso?.lecciones?.n4ex?.aprobada ? '<span class="chip dorado">Sin respuesta</span>' : '<span class="muted">—</span>';
+  }
   function vMaster() {
     if (!esMaster()) {
       return `<h1 class="vista-titulo">${FC.ico('llave')} Acceso master</h1>
@@ -396,6 +467,8 @@ FC.App = (() => {
     const lista = [...(m.lista || [])].sort((a, b) => estadoVivo(b.hace)[2] - estadoVivo(a.hace)[2]);
     const enLinea = lista.filter(p => estadoVivo(p.hace)[2] === 2).length;
     const jugando = n => lista.filter(p => p.progreso?.casos?.[n]?.estado && !p.resultados?.[n]).length;
+    const confirmados = lista.filter(p => p.progreso?.invitacion?.respuesta === 'si').length;
+    const previa = lista.filter(p => p.progreso?.lecciones?.n4ex?.aprobada).length;
     const terminaron = n => lista.filter(p => p.resultados?.[n]).length;
     const nombreNivel = n => FC.NIVELES.find(x => x.n === n).etapa;
     const filas = lista.map(p => {
@@ -409,6 +482,7 @@ FC.App = (() => {
         <td>@${esc(p.usuario)}</td>
         <td><code>${m.ver[p.id] || m.ver.todas ? esc(p.clave) : '••••••'}</code> <button class="btn-icono" title="Ver contraseña" data-accion="ver-clave" data-id="${p.id}" style="width:30px;height:30px;font-size:16px">${FC.ico('ojo')}</button></td>
         <td class="num">${hechas}/16</td>
+        <td>${asistencia(p)}</td>
         <td>${celdaNivel(6)}</td><td>${celdaNivel(7)}</td>
         <td><button class="btn-icono" title="Eliminar participante" data-accion="borrar-participante" data-id="${p.id}">${FC.ico('papelera')}</button></td>
       </tr>`;
@@ -426,6 +500,7 @@ FC.App = (() => {
           <div class="stat"><span class="stat-ic t-azul">${FC.ico('usuarios')}</span><div><small>Registrados</small>${lista.length}</div></div>
           <div class="stat"><span class="stat-ic t-verde">${FC.ico('wifi')}</span><div><small>En línea ahora</small>${enLinea}</div></div>
           <div class="stat"><span class="stat-ic t-morado">${FC.ico('diana')}</span><div><small>Jugando N6 / N7</small>${jugando(6)} / ${jugando(7)}</div></div>
+          <div class="stat"><span class="stat-ic t-azul">${FC.ico('edificio')}</span><div><small>Confirmados 25/11</small>${confirmados} de ${previa}</div></div>
           <div class="stat"><span class="stat-ic t-dorado">${FC.ico('bandera')}</span><div><small>Terminaron N6 / N7</small>${terminaron(6)} / ${terminaron(7)}</div></div>
         </div></div>
 
@@ -446,7 +521,7 @@ FC.App = (() => {
             <button class="btn btn-blanco btn-chico" data-accion="recargar-master">${FC.ico('actualizar')} Actualizar</button>
           </div>
           <p style="font-weight:700;margin-bottom:12px">Seleccionar a los mejores <input class="campo" type="number" min="1" max="50" value="${m.top}" id="top-n" style="width:70px;display:inline-block;padding:6px 8px"> de la competencia (nivel 6) <button class="btn btn-blanco btn-chico" data-accion="sel-top">Seleccionar</button></p>
-          ${lista.length ? `<div class="table-wrap"><table><thead><tr><th></th><th>Participante</th><th>Estado</th><th>Actividad</th><th>Usuario</th><th>Contraseña</th><th class="num">Lecciones</th><th>${nombreNivel(6)}</th><th>${nombreNivel(7)}</th><th></th></tr></thead><tbody>${filas}</tbody></table></div>`
+          ${lista.length ? `<div class="table-wrap"><table><thead><tr><th></th><th>Participante</th><th>Estado</th><th>Actividad</th><th>Usuario</th><th>Contraseña</th><th class="num">Lecciones</th><th>25/11</th><th>${nombreNivel(6)}</th><th>${nombreNivel(7)}</th><th></th></tr></thead><tbody>${filas}</tbody></table></div>`
             : `<p class="muted">${m.lista ? 'Aún no hay participantes registrados.' : 'Cargando…'}</p>`}
         </div></div>
 
@@ -593,6 +668,8 @@ FC.App = (() => {
       case 'volver-acceso': ir('ruta'); return;
       case 'salir-demo': salirDemo(); return;
       case 'repaso': abrirRepaso(); return;
+      case 'invitacion': abrirInvitacion(); return;
+      case 'invitacion-cambiar': delete prog().invitacion; guardarP(); abrirInvitacion(); render(); return;
       case 'actualizar': sincronizar(); return;
       case 'reenviar': reintentarEnvios(); return;
       case 'podio-participante': modal('<p class="muted">Cargando el podio…</p>'); FC.Datos.podio(7).then(l => modal(podioHTML(l, 'Podio de la final'))).catch(err => modal(`<p class="mensaje-error">${esc(err.message)}</p>`)); return;
@@ -614,6 +691,7 @@ FC.App = (() => {
     FC.Caso.init();
     document.querySelectorAll('#nav button[data-vista]').forEach(b => b.addEventListener('click', () => ir(b.dataset.vista)));
     $('nav-salir').addEventListener('click', cerrarSesion);
+    $('modal').addEventListener('submit', e => { if (e.target.id === 'form-invitacion') { e.preventDefault(); responderInvitacion(e.target); } });
     $('modal').addEventListener('click', e => { if (e.target.closest('[data-cerrar]')) cerrarModal(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('modal').hidden) cerrarModal(); });
     try { P = JSON.parse(localStorage.getItem(SESION_KEY)); } catch { P = null; }
