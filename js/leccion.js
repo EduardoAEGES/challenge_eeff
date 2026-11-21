@@ -74,7 +74,8 @@ FC.Leccion = (() => {
     dom.cuerpo.scrollTop = 0;
     limpiarFeedback();
     dom.pista.hidden = !s.ej.pista;
-    const puedeComodin = !s.opciones.repaso && s.actual.resolver && (s.opciones.prueba || s.opciones.comodin?.disponible());
+    // Un solo comodín por nivel, también en demostración y modo prueba
+    const puedeComodin = !s.opciones.repaso && s.actual.resolver && Boolean(s.opciones.comodin?.disponible());
     dom.comodin.hidden = !puedeComodin;
     if (!s.actual.calificable) { dom.boton.textContent = 'Continuar'; dom.boton.disabled = false; s.fase = 'teoria'; dom.comodin.hidden = true; }
     else { dom.boton.textContent = 'Comprobar'; refrescar(); }
@@ -95,10 +96,10 @@ FC.Leccion = (() => {
 
   async function usarComodin() {
     if (!s || s.fase !== 'respondiendo' || !s.actual.resolver) return;
-    if (!s.opciones.prueba && !s.opciones.comodin?.disponible()) return;
-    if (!s.opciones.prueba && !await FC.confirmar({ icono: FC.ico('comodin'), titulo: '¿Usar tu comodín?', texto: 'Tienes uno solo en este nivel. Resolverá este ejercicio por ti.', aceptar: 'Usar comodín', cancelar: 'Guardarlo', tono: 'dorado' })) return;
+    if (!s.opciones.comodin?.disponible()) return;
+    if (!await FC.confirmar({ icono: FC.ico('comodin'), titulo: '¿Usar tu comodín?', texto: 'Tienes uno solo en este nivel. Resolverá este ejercicio por ti.', aceptar: 'Usar comodín', cancelar: 'Guardarlo', tono: 'dorado' })) return;
     if (!s || s.fase !== 'respondiendo' || !s.actual.resolver) return;
-    if (!s.opciones.prueba) s.opciones.comodin.usar();
+    s.opciones.comodin.usar();
     s.actual.resolver();
     dom.comodin.hidden = true;
     const caja = document.createElement('div');

@@ -141,9 +141,12 @@ FC.App = (() => {
   }
 
   // ---------- Demostración (solo desde master) ----------
-  function iniciarDemo() {
+  let comodinesPrueba = {}; // modo prueba del master: un comodín por nivel mientras dure la sesión
+  function iniciarDemo({ previaCompleta = false } = {}) {
     participanteReal = P;
     P = { usuario: 'demo', clave: '', nombre: 'Participante de demostración', condicion: 'Estudiante', habilitado: [6, 7], resultados: {}, progreso: progresoVacio(), demo: true };
+    // Simulación: niveles 1 a 4 aprobados, como si terminara la etapa previa
+    if (previaCompleta) FC.NIVELES.filter(nv => nv.lecciones && nv.n <= 4).forEach(nv => nv.lecciones.forEach(l => { P.progreso.lecciones[l.id] = { precision: 100, aprobada: true, fecha: new Date().toISOString() }; }));
     ir('ruta');
   }
   function salirDemo() { P = participanteReal; participanteReal = null; ir('master'); }
@@ -323,7 +326,7 @@ FC.App = (() => {
     render();
   }
 
-  const bannerInvitacion = () => (P && !P.demo && etapaPreviaCompleta()
+  const bannerInvitacion = () => (P && etapaPreviaCompleta()
     ? `<div class="invita-banner"><span class="invita-banner-ic">${FC.ico('trofeo')}</span>
         <div><b>${invitacion()?.respuesta === 'si' ? 'Asistencia confirmada' : '¡Completaste la etapa previa!'}</b>
         <span>${EVENTO.dia} ${EVENTO.fecha} · ${EVENTO.lugar} · ${EVENTO.sede}</span></div>
@@ -538,7 +541,11 @@ FC.App = (() => {
       </div>
 
       <div class="seccion"><h2>${FC.ico('matraz')} Modo prueba</h2>
-        <div class="tarjeta"><p class="muted" style="font-weight:600;margin-bottom:10px">Recorre cualquier lección o caso sin guardar resultados.</p>
+        <div class="tarjeta"><p class="muted" style="font-weight:600;margin-bottom:10px">Recorre cualquier lección o caso sin guardar resultados. El comodín se puede usar una sola vez por nivel.</p>
+          <div class="codigos" style="margin:0 0 12px">
+            <button class="btn btn-certus btn-chico" data-accion="simular-previa">${FC.ico('trofeo')} Simular etapa previa completada</button>
+            <button class="btn btn-blanco btn-chico" data-accion="reiniciar-comodines">${FC.ico('comodin')} Reiniciar comodines de prueba</button>
+          </div>
           <div class="codigos">${FC.NIVELES.filter(n => n.lecciones).map(nv => nv.lecciones.map(l => `<button class="btn btn-blanco btn-chico" data-accion="probar-leccion" data-id="${l.id}">N${nv.n} · ${esc(l.titulo)}</button>`).join('')).join('')}
           ${[6, 7].map(n => `<button class="btn btn-certus btn-chico" data-accion="probar-caso" data-n="${n}">N${n} · ${esc(FC.NIVELES.find(x => x.n === n).titulo)}</button>`).join('')}</div></div></div>`;
   }
@@ -596,7 +603,13 @@ FC.App = (() => {
       case 'csv': exportarCSV(m.nivel); break;
       case 'guiado-master': abrirGuiado(el.dataset.id, true); break;
       case 'demo': iniciarDemo(); break;
-      case 'probar-leccion': FC.Leccion.abrir(el.dataset.id, { prueba: true, alTerminar: render }); break;
+      case 'probar-leccion': {
+        const nivelN = FC.leccionPorId(el.dataset.id).nivel.n;
+        FC.Leccion.abrir(el.dataset.id, { prueba: true, comodin: { disponible: () => !comodinesPrueba[nivelN], usar: () => { comodinesPrueba[nivelN] = true; } }, alTerminar: render });
+        break;
+      }
+      case 'reiniciar-comodines': comodinesPrueba = {}; render(); break;
+      case 'simular-previa': iniciarDemo({ previaCompleta: true }); setTimeout(abrirInvitacion, 300); break;
       case 'probar-caso': {
         const nv = FC.NIVELES.find(x => x.n === n);
         FC.Caso.abrir({ casoId: nv.caso, modo: 'prueba', etiqueta: `Nivel ${n} · ${nv.titulo}`, alCerrar: render });
