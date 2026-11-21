@@ -466,6 +466,7 @@ h1 .ico, h2 .ico, h3 .ico { color: var(--certus); }
 .medalla-ic.m1 { background: linear-gradient(145deg, #f7d774, #c9971c); }
 .medalla-ic.m2 { background: linear-gradient(145deg, #e3e7ec, #98a2ad); }
 .medalla-ic.m3 { background: linear-gradient(145deg, #e7a874, #a5622d); }
+.medalla-ic.m4 { background: linear-gradient(145deg, #7aa7e0, #1c6fc4); }
 .premios { line-height: 2.1; }
 .podio .medalla .medalla-ic, .escalon .medalla .medalla-ic { font-size: 28px; }
 /* Comodines por nivel */

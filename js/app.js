@@ -10,7 +10,7 @@ FC.App = (() => {
   const SESION_KEY = 'fc-sesion';
   const MASTER_SES = 'fc-master-clave';
   const CORAZONES_MAX = 5;
-  const PREMIOS = [150, 100, 50];
+  const PREMIOS = [150, 100, 60, 30]; // gift cards en soles para los puestos 1.º a 4.º
   const { fmt, esc } = V;
   const $ = id => document.getElementById(id);
 
@@ -175,7 +175,7 @@ FC.App = (() => {
       ${c === 0 ? `<div class="tarjeta panel-tarjeta"><h3>${FC.ico('corazonRoto')} Sin corazones</h3><p>Haz una sesión de repaso para recuperar 2.</p><button class="btn btn-chico" data-accion="repaso" style="margin-top:10px">${FC.ico('repetir')} Sesión de repaso</button></div>` : ''}
       <div class="tarjeta panel-tarjeta"><h3>${FC.ico('comodin')} Comodines</h3><p>Uno por nivel. ${[1, 2, 3, 4].map(n => `<span class="comodin-n${prog().comodines[n] ? ' usado' : ''}">N${n}</span>`).join(' ')}</p></div>
       <div class="tarjeta panel-tarjeta"><h3>${FC.ico('regalo')} Premios de la final</h3>
-        <p class="premios">${FC.medalla(0)} Gift card de S/ 150<br>${FC.medalla(1)} Gift card de S/ 100<br>${FC.medalla(2)} Gift card de S/ 50</p></div>`;
+        <p class="premios">${PREMIOS.map((m, i) => `${FC.medalla(i)} Gift card de S/ ${m}`).join('<br>')}</p></div>`;
   }
 
   // ---------- Ruta ----------
@@ -276,7 +276,7 @@ FC.App = (() => {
   }
 
   // ---------- Invitación a la etapa presencial (al terminar los niveles 1 a 4) ----------
-  const EVENTO = { dia: 'Miércoles', fecha: '25 de noviembre', lugar: 'Laboratorio 8', sede: 'Sede Arequipa', cupos: 25, premiados: 5 };
+  const EVENTO = { dia: 'Miércoles', fecha: '25 de noviembre', lugar: 'Laboratorio 8', sede: 'Sede Arequipa', cupos: 25, premiados: 4 };
   const etapaPreviaCompleta = () => Boolean(P) && nivelAprobado(4);
   const invitacion = () => prog().invitacion || null;
   const inv = { editando: false, cupos: null, error: null };
@@ -311,7 +311,7 @@ FC.App = (() => {
             <h3>Te invitamos a participar</h3>
             <p>${FC.ico('pizarra')} Clase guiada y competencia en vivo</p>
             <p>${FC.ico('edificio')} <b>${EVENTO.lugar}</b> · ${EVENTO.sede}</p>
-            <p>${FC.ico('regalo')} Premios para los ${EVENTO.premiados} primeros puestos</p>
+            <p>${FC.ico('regalo')} Premios para los ${EVENTO.premiados} primeros puestos: gift cards de S/ ${PREMIOS.join(', ').replace(/, (\d+)$/, ' y $1')}</p>
             <p>${FC.ico('usuarios')} Cupo limitado: ${EVENTO.cupos} participantes</p>
           </div>
         </div>
