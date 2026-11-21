@@ -128,6 +128,7 @@ FC.Datos = (() => {
         return { id: r.id, participante_id: p.id, nombre: p.nombre, usuario: p.usuario, condicion: p.condicion, puntaje: r.puntaje, segundos: r.segundos, vidas: r.vidas, comodin: r.comodin, elecciones: r.elecciones, creado: r.creado };
       });
     },
+    async fc_admin_quitar_inscripcion({ p_master, p_id }) { await exigirMaster(p_master); const db = leer(); const p = db.participantes.find(x => x.id === p_id); if (p?.progreso) delete p.progreso.invitacion; escribir(db); },
     async fc_admin_borrar_resultado({ p_master, p_id }) { await exigirMaster(p_master); const db = leer(); db.resultados = db.resultados.filter(r => r.id !== p_id); escribir(db); },
     async fc_admin_borrar_participante({ p_master, p_id }) {
       await exigirMaster(p_master); const db = leer();
@@ -154,6 +155,7 @@ FC.Datos = (() => {
       habilitar: (master, ids, nivel, valor) => llamar('fc_admin_habilitar', { p_master: master, p_ids: ids, p_nivel: nivel, p_valor: valor }),
       ranking: (master, nivel) => llamar('fc_admin_ranking', { p_master: master, p_nivel: nivel }),
       borrarResultado: (master, id) => llamar('fc_admin_borrar_resultado', { p_master: master, p_id: id }),
+      quitarInscripcion: (master, id) => llamar('fc_admin_quitar_inscripcion', { p_master: master, p_id: id }),
       borrarParticipante: (master, id) => llamar('fc_admin_borrar_participante', { p_master: master, p_id: id })
     }
   };

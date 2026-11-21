@@ -41,7 +41,9 @@ FC.App = (() => {
     P.habilitado = (d.habilitado || []).map(Number);
     P.resultados = d.resultados || {};
     if (conProgreso) P.progreso = { ...progresoVacio(), ...(d.progreso || {}) };
-    else if (P.progreso && d.progreso?.invitacion) P.progreso.invitacion = d.progreso.invitacion; // la respuesta vive en el servidor
+    else if (P.progreso) { // la respuesta a la invitación vive en el servidor (el master puede quitarla)
+      if (d.progreso?.invitacion) P.progreso.invitacion = d.progreso.invitacion; else delete P.progreso.invitacion;
+    }
   }
   async function sincronizar() {
     if (!P || P.demo || sincronizando) return;
@@ -505,8 +507,8 @@ FC.App = (() => {
       <div class="tarjeta">
         <div class="invita-cupos ${lleno ? 'lleno' : ''}" style="margin-bottom:12px"><div><b>${ins.length} de ${EVENTO.cupos} cupos ocupados</b><span>${lleno ? 'Cupo completo' : `Quedan ${EVENTO.cupos - ins.length}`}</span></div>
           <div class="barra"><div style="width:${Math.min(100, ins.length / EVENTO.cupos * 100)}%"></div></div></div>
-        ${ins.length ? `<div class="table-wrap"><table><thead><tr><th>#</th><th>Nombres y apellidos</th><th>Correo</th><th>Celular</th><th>Usuario</th></tr></thead><tbody>
-          ${ins.map((p, i) => { const v = p.progreso.invitacion; return `<tr><td>${i + 1}</td><td><b>${esc(v.nombre)}</b></td><td>${esc(v.correo)}</td><td>${esc(v.celular || '—')}</td><td>@${esc(p.usuario)}</td></tr>`; }).join('')}</tbody></table></div>
+        ${ins.length ? `<div class="table-wrap"><table><thead><tr><th>#</th><th>Nombres y apellidos</th><th>Correo</th><th>Celular</th><th>Usuario</th><th></th></tr></thead><tbody>
+          ${ins.map((p, i) => { const v = p.progreso.invitacion; return `<tr><td>${i + 1}</td><td><b>${esc(v.nombre)}</b></td><td>${esc(v.correo)}</td><td>${esc(v.celular || '—')}</td><td>@${esc(p.usuario)}</td><td><button class="btn-icono" title="Quitar inscripción" data-accion="quitar-inscrito" data-id="${p.id}">${FC.ico('papelera')}</button></td></tr>`; }).join('')}</tbody></table></div>
           <div class="codigos"><button class="btn btn-blanco btn-chico" data-accion="csv-inscritos">${FC.ico('descargar')} Exportar inscritos (CSV)</button></div>`
           : '<p class="muted">Aún no hay inscritos.</p>'}
       </div></div>`;
@@ -682,6 +684,13 @@ FC.App = (() => {
       case 'ver-resultado': verResultado(m.ranking[m.nivel][Number(el.dataset.i)]); break;
       case 'csv': exportarCSV(m.nivel); break;
       case 'csv-inscritos': exportarInscritos(); break;
+      case 'quitar-inscrito': {
+        const p = m.lista.find(x => x.id === el.dataset.id);
+        const v = p?.progreso?.invitacion || {};
+        if (!await FC.confirmar({ icono: FC.ico('papelera'), titulo: `¿Quitar a ${v.nombre || p.nombre} de los inscritos?`, texto: 'Se libera su cupo. Su cuenta y su progreso no se borran, y podrá volver a inscribirse si hay cupos.', aceptar: 'Quitar inscripción', tono: 'rojo' })) return;
+        try { await FC.Datos.admin.quitarInscripcion(claveMaster(), p.id); await cargarMaster(); } catch (e) { alert(e.message); }
+        break;
+      }
       case 'csv-encuesta': exportarEncuesta(); break;
       case 'guiado-master': abrirGuiado(el.dataset.id, true); break;
       case 'demo': iniciarDemo(); break;

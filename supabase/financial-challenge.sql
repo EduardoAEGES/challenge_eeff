@@ -220,11 +220,20 @@ begin
   return inv;
 end $$;
 
+-- El facilitador quita a un inscrito (libera su cupo; podrá volver a responder)
+create or replace function public.fc_admin_quitar_inscripcion(p_master text, p_id uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not fc_es_master(p_master) then raise exception 'MASTER'; end if;
+  perform pg_advisory_xact_lock(hashtext('fc_invitacion'));
+  update fc_participantes set progreso = progreso - 'invitacion', actualizado = now() where id = p_id;
+end $$;
+
 grant execute on function public.fc_registrar(text, text, text, text), public.fc_entrar(text, text), public.fc_guardar(text, text, jsonb),
   public.fc_enviar_resultado(text, text, int, int[], int, int, boolean, int, jsonb), public.fc_podio(int),
   public.fc_admin_listar(text), public.fc_admin_habilitar(text, uuid[], int, boolean), public.fc_admin_ranking(text, int),
   public.fc_admin_borrar_resultado(text, uuid), public.fc_admin_borrar_participante(text, uuid),
-  public.fc_invitacion_cupos(), public.fc_invitacion(text, text, text, text, text, text)
+  public.fc_invitacion_cupos(), public.fc_invitacion(text, text, text, text, text, text), public.fc_admin_quitar_inscripcion(text, uuid)
   to anon, authenticated;
 revoke execute on function public.fc_es_master(text), public.fc_json_participante(fc_participantes) from anon, authenticated, public;
 
