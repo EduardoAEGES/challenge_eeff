@@ -22,6 +22,7 @@ FC.Datos = (() => {
     CUPO_LLENO: 'Lo sentimos: los 25 cupos ya están completos.',
     CORREO_INVALIDO: 'Escribe un correo electrónico válido.',
     RESPUESTA_INVALIDA: 'Elige si asistirás o no.',
+    FOTO_INVALIDA: 'No se pudo guardar la foto. Inténtalo de nuevo.',
     SIN_ESQUEMA: 'La base de datos del reto aún no está configurada. El facilitador debe ejecutar supabase/financial-challenge.sql en Supabase.',
     RED: 'No hay conexión con el servidor. Revisa tu internet e inténtalo de nuevo.'
   };
@@ -115,7 +116,7 @@ FC.Datos = (() => {
       return db.resultados.filter(r => r.nivel === p_nivel).sort(ordenar).slice(0, 3)
         .map(r => ({ nombre: db.participantes.find(p => p.id === r.participante_id)?.nombre || '—', puntaje: r.puntaje, segundos: r.segundos }));
     },
-    async fc_admin_listar({ p_master }) { await exigirMaster(p_master); const db = leer(); return db.participantes.map(p => ({ ...json(db, p), clave: p.clave, creado: p.creado, hace: p.visto ? Math.floor((Date.now() - Date.parse(p.visto)) / 1000) : null })); },
+    async fc_admin_listar({ p_master }) { await exigirMaster(p_master); const db = leer(); return db.participantes.map(p => ({ ...json(db, p), clave: p.clave, creado: p.creado, tiene_foto: Boolean(p.foto), hace: p.visto ? Math.floor((Date.now() - Date.parse(p.visto)) / 1000) : null })); },
     async fc_admin_habilitar({ p_master, p_ids, p_nivel, p_valor }) {
       await exigirMaster(p_master); const db = leer();
       for (const p of db.participantes) if (p_ids.includes(p.id)) { p.habilitado = p.habilitado.filter(n => n !== p_nivel); if (p_valor) p.habilitado.push(p_nivel); }
@@ -128,6 +129,11 @@ FC.Datos = (() => {
         return { id: r.id, participante_id: p.id, nombre: p.nombre, usuario: p.usuario, condicion: p.condicion, puntaje: r.puntaje, segundos: r.segundos, vidas: r.vidas, comodin: r.comodin, elecciones: r.elecciones, creado: r.creado };
       });
     },
+    async fc_foto({ p_usuario, p_clave, p_foto }) {
+      if (p_foto && (!/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(p_foto) || p_foto.length > 200000)) throw error('FOTO_INVALIDA');
+      const db = leer(); const p = buscar(db, p_usuario, p_clave); p.foto = p_foto || null; escribir(db);
+    },
+    async fc_admin_foto({ p_master, p_id }) { await exigirMaster(p_master); return leer().participantes.find(x => x.id === p_id)?.foto || null; },
     async fc_admin_quitar_inscripcion({ p_master, p_id }) { await exigirMaster(p_master); const db = leer(); const p = db.participantes.find(x => x.id === p_id); if (p?.progreso) delete p.progreso.invitacion; escribir(db); },
     async fc_admin_borrar_resultado({ p_master, p_id }) { await exigirMaster(p_master); const db = leer(); db.resultados = db.resultados.filter(r => r.id !== p_id); escribir(db); },
     async fc_admin_borrar_participante({ p_master, p_id }) {
@@ -149,12 +155,14 @@ FC.Datos = (() => {
     }),
     podio: nivel => llamar('fc_podio', { p_nivel: nivel }),
     cupos: () => llamar('fc_invitacion_cupos', {}),
+    foto: (usuario, clave, foto) => llamar('fc_foto', { p_usuario: usuario, p_clave: clave, p_foto: foto }),
     invitacion: (usuario, clave, d) => llamar('fc_invitacion', { p_usuario: usuario, p_clave: clave, p_respuesta: d.respuesta, p_nombre: d.nombre, p_correo: d.correo, p_celular: d.celular }),
     admin: {
       listar: master => llamar('fc_admin_listar', { p_master: master }),
       habilitar: (master, ids, nivel, valor) => llamar('fc_admin_habilitar', { p_master: master, p_ids: ids, p_nivel: nivel, p_valor: valor }),
       ranking: (master, nivel) => llamar('fc_admin_ranking', { p_master: master, p_nivel: nivel }),
       borrarResultado: (master, id) => llamar('fc_admin_borrar_resultado', { p_master: master, p_id: id }),
+      foto: (master, id) => llamar('fc_admin_foto', { p_master: master, p_id: id }),
       quitarInscripcion: (master, id) => llamar('fc_admin_quitar_inscripcion', { p_master: master, p_id: id }),
       borrarParticipante: (master, id) => llamar('fc_admin_borrar_participante', { p_master: master, p_id: id })
     }

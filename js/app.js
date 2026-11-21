@@ -289,6 +289,95 @@ FC.App = (() => {
       <span>${c.confirmados} confirmado(s)</span></div><div class="barra"><div style="width:${Math.min(100, (c.confirmados / c.limite) * 100)}%"></div></div></div>`;
   }
 
+  // ---------- Antes de la invitación: encuesta NPS y foto opcional ----------
+  // Orden: 1) NPS  2) foto (o la omite)  3) invitación con el formulario de inscripción
+  function abrirEtapaFinal(primeraVez = false) {
+    if (!P) return;
+    if (!prog().nps) return abrirNps(primeraVez);
+    if (!prog().fotoPaso) return abrirFoto();
+    abrirInvitacion(primeraVez && !prog().invitacion);
+  }
+
+  const nps = { valor: null, motivo: '', error: null };
+  function abrirNps(celebrar = false) {
+    const nombre = esc((P.nombre || '').split(' ')[0] || P.usuario);
+    modal(`<div class="paso-final">
+      <div class="pasos-indicador"><span class="activo">1. Tu opinión</span><span>2. Foto</span><span>3. Inscripción</span></div>
+      <div class="nps-cab">${FC.ico('trofeo')}<div><small>¡Completaste la etapa previa, ${nombre}!</small><h2>Antes de tu invitación, una pregunta rápida</h2></div></div>
+      <form id="form-nps" class="nps-form">
+        <p class="nps-pregunta">Del 0 al 10, ¿qué tan probable es que recomiendes el Financial Challenge a un compañero?</p>
+        <div class="nps-escala" role="radiogroup" aria-label="Puntaje del 0 al 10">
+          ${Array.from({ length: 11 }, (_, i) => `<label class="nps-n n${i <= 6 ? 'd' : i <= 8 ? 'p' : 'r'}"><input type="radio" name="nps" value="${i}" ${nps.valor === i ? 'checked' : ''}><span>${i}</span></label>`).join('')}
+        </div>
+        <div class="nps-extremos"><span>Nada probable</span><span>Muy probable</span></div>
+        <div><label class="etiqueta" for="nps-motivo">¿Por qué diste esa nota? (opcional)</label>
+          <textarea class="campo" id="nps-motivo" name="motivo" rows="2" maxlength="400" placeholder="Cuéntanos qué te gustó o qué mejorarías">${esc(nps.motivo)}</textarea></div>
+        ${nps.error ? `<p class="mensaje-error">${esc(nps.error)}</p>` : ''}
+        <button class="btn btn-certus btn-bloque" type="submit">Continuar</button>
+      </form></div>`);
+    if (celebrar) { FC.Sonido?.completado?.(); FC.Leccion.confeti(); }
+  }
+  function responderNps(f) {
+    nps.motivo = f.motivo.value;
+    if (!f.nps.value) { nps.error = 'Elige un número del 0 al 10.'; abrirNps(); return; }
+    nps.error = null;
+    prog().nps = { valor: Number(f.nps.value), motivo: f.motivo.value.trim().slice(0, 400), fecha: new Date().toISOString() };
+    guardarP();
+    abrirEtapaFinal();
+  }
+
+  // Cámara: se apaga siempre al cerrar el modal o al terminar
+  let camara = null, fotoTomada = null;
+  function apagarCamara() { camara?.getTracks().forEach(t => t.stop()); camara = null; }
+  function abrirFoto(error = null) {
+    const puedeCamara = Boolean(navigator.mediaDevices?.getUserMedia);
+    modal(`<div class="paso-final">
+      <div class="pasos-indicador"><span class="hecho">1. Tu opinión</span><span class="activo">2. Foto</span><span>3. Inscripción</span></div>
+      <div class="nps-cab">${FC.ico('usuarios')}<div><small>Opcional</small><h2>Foto para tu identificación el día del evento</h2></div></div>
+      <div class="foto-zona">
+        <div class="foto-marco">${fotoTomada ? `<img src="${fotoTomada}" alt="Tu foto">` : `<video id="foto-video" autoplay playsinline muted></video><div class="foto-vacia" id="foto-vacia">${FC.ico('usuarios')}<span>${puedeCamara ? 'Activa la cámara para tomar tu foto' : 'Tu navegador no permite usar la cámara'}</span></div>`}</div>
+        <label class="foto-consentimiento"><input type="checkbox" id="foto-acepto" ${fotoTomada ? 'checked' : ''}>
+          <span>Autorizo a CERTUS a guardar mi foto solo para identificarme durante el Financial Challenge. Será visible únicamente para el facilitador.</span></label>
+        ${error ? `<p class="mensaje-error">${esc(error)}</p>` : ''}
+        <div class="foto-botones">
+          ${fotoTomada
+            ? `<button class="btn btn-blanco" type="button" data-accion="foto-repetir">${FC.ico('repetir')} Tomar otra</button><button class="btn btn-certus" type="button" data-accion="foto-guardar">${FC.ico('check')} Usar esta foto</button>`
+            : puedeCamara ? `<button class="btn btn-certus" type="button" data-accion="foto-camara" id="foto-btn">${FC.ico('pantalla')} Activar cámara</button>` : ''}
+        </div>
+        <button class="enlace" type="button" data-accion="foto-omitir">Prefiero no tomarme una foto</button>
+      </div></div>`);
+  }
+  async function encenderCamara() {
+    if (!$('foto-acepto')?.checked) { abrirFoto('Marca la casilla de autorización para continuar, o elige no tomarte una foto.'); return; }
+    try {
+      camara = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } }, audio: false });
+      const v = $('foto-video'); if (!v) { apagarCamara(); return; }
+      v.srcObject = camara; $('foto-vacia')?.remove();
+      const b = $('foto-btn'); b.dataset.accion = 'foto-capturar'; b.innerHTML = `${FC.ico('check')} Tomar foto`;
+    } catch (e) {
+      apagarCamara();
+      abrirFoto(e.name === 'NotAllowedError' ? 'No diste permiso para usar la cámara. Puedes permitirlo en el candado de la barra de direcciones, o continuar sin foto.' : 'No se encontró una cámara disponible. Puedes continuar sin foto.');
+    }
+  }
+  function capturarFoto() {
+    const v = $('foto-video'); if (!v?.videoWidth) return;
+    const lado = Math.min(v.videoWidth, v.videoHeight), c = document.createElement('canvas');
+    c.width = c.height = 320;
+    const ctx2 = c.getContext('2d');
+    ctx2.translate(320, 0); ctx2.scale(-1, 1); // como un espejo, igual que la vista previa
+    ctx2.drawImage(v, (v.videoWidth - lado) / 2, (v.videoHeight - lado) / 2, lado, lado, 0, 0, 320, 320);
+    fotoTomada = c.toDataURL('image/jpeg', 0.8);
+    apagarCamara(); abrirFoto();
+  }
+  async function guardarFoto() {
+    if (!$('foto-acepto')?.checked) { abrirFoto('Marca la casilla de autorización para guardar tu foto.'); return; }
+    try {
+      if (!P.demo) await FC.Datos.foto(P.usuario, P.clave, fotoTomada);
+      prog().fotoPaso = 'tomada'; guardarP(); fotoTomada = null;
+      abrirEtapaFinal();
+    } catch (e) { abrirFoto(e.message); }
+  }
+
   function abrirInvitacion(primeraVez = false) {
     if (!P) return;
     const r = invitacion();
@@ -310,7 +399,7 @@ FC.App = (() => {
           <div class="invita-datos">
             <h3>Te invitamos a participar</h3>
             <p>${FC.ico('pizarra')} Clase guiada y competencia en vivo</p>
-            <p>${FC.ico('edificio')} <b>${EVENTO.lugar}</b> · ${EVENTO.sede}</p>
+            <p>${FC.ico('edificio')} <span><b>${EVENTO.lugar}</b> de la ${EVENTO.sede}</span></p>
             <p>${FC.ico('regalo')} Premios para los ${EVENTO.premiados} primeros puestos: gift cards de S/ ${PREMIOS.join(', ').replace(/, (\d+)$/, ' y $1')}</p>
             <p>${FC.ico('usuarios')} Cupo limitado: ${EVENTO.cupos} participantes</p>
           </div>
@@ -397,7 +486,7 @@ FC.App = (() => {
           guardarP();
         }
         render();
-        if (!P.demo && !antes && etapaPreviaCompleta() && !invitacion()) setTimeout(() => abrirInvitacion(true), 350);
+        if (!P.demo && !antes && etapaPreviaCompleta() && !invitacion()) setTimeout(() => abrirEtapaFinal(true), 350);
       }
     });
   }
@@ -499,6 +588,14 @@ FC.App = (() => {
     if (r === 'no') return '<span class="chip">No asistirá</span>';
     return p.progreso?.lecciones?.n4ex?.aprobada ? '<span class="chip dorado">Sin respuesta</span>' : '<span class="muted">—</span>';
   }
+  // Fotos: se cargan una sola vez por participante y se guardan en memoria
+  const fotos = {};
+  function miniFoto(p) {
+    if (!p.tiene_foto) return '<span class="muted" title="Sin foto">—</span>';
+    const f = fotos[p.id];
+    if (f === undefined) { fotos[p.id] = null; FC.Datos.admin.foto(claveMaster(), p.id).then(x => { fotos[p.id] = x || ''; if (ui.vista === 'master') render(); }).catch(() => { delete fotos[p.id]; }); }
+    return f ? `<button class="foto-mini" type="button" data-accion="ver-foto" data-id="${p.id}" title="Ver foto"><img src="${f}" alt="Foto de ${esc(p.nombre)}"></button>` : '<span class="foto-mini cargando"></span>';
+  }
   function seccionInscritos(lista) {
     const ins = lista.filter(p => p.progreso?.invitacion?.respuesta === 'si')
       .sort((a, b) => String(a.progreso.invitacion.fecha).localeCompare(String(b.progreso.invitacion.fecha)));
@@ -507,8 +604,8 @@ FC.App = (() => {
       <div class="tarjeta">
         <div class="invita-cupos ${lleno ? 'lleno' : ''}" style="margin-bottom:12px"><div><b>${ins.length} de ${EVENTO.cupos} cupos ocupados</b><span>${lleno ? 'Cupo completo' : `Quedan ${EVENTO.cupos - ins.length}`}</span></div>
           <div class="barra"><div style="width:${Math.min(100, ins.length / EVENTO.cupos * 100)}%"></div></div></div>
-        ${ins.length ? `<div class="table-wrap"><table><thead><tr><th>#</th><th>Nombres y apellidos</th><th>Correo</th><th>Celular</th><th>Usuario</th><th></th></tr></thead><tbody>
-          ${ins.map((p, i) => { const v = p.progreso.invitacion; return `<tr><td>${i + 1}</td><td><b>${esc(v.nombre)}</b></td><td>${esc(v.correo)}</td><td>${esc(v.celular || '—')}</td><td>@${esc(p.usuario)}</td><td><button class="btn-icono" title="Quitar inscripción" data-accion="quitar-inscrito" data-id="${p.id}">${FC.ico('papelera')}</button></td></tr>`; }).join('')}</tbody></table></div>
+        ${ins.length ? `<div class="table-wrap"><table><thead><tr><th>#</th><th>Foto</th><th>Nombres y apellidos</th><th>Correo</th><th>Celular</th><th>Usuario</th><th></th></tr></thead><tbody>
+          ${ins.map((p, i) => { const v = p.progreso.invitacion; return `<tr><td>${i + 1}</td><td>${miniFoto(p)}</td><td><b>${esc(v.nombre)}</b></td><td>${esc(v.correo)}</td><td>${esc(v.celular || '—')}</td><td>@${esc(p.usuario)}</td><td><button class="btn-icono" title="Quitar inscripción" data-accion="quitar-inscrito" data-id="${p.id}">${FC.ico('papelera')}</button></td></tr>`; }).join('')}</tbody></table></div>
           <div class="codigos"><button class="btn btn-blanco btn-chico" data-accion="csv-inscritos">${FC.ico('descargar')} Exportar inscritos (CSV)</button></div>`
           : '<p class="muted">Aún no hay inscritos.</p>'}
       </div></div>`;
@@ -518,7 +615,24 @@ FC.App = (() => {
     const prom = k => rs.length ? (rs.reduce((a, x) => a + (Number(x.e[k]) || 0), 0) / rs.length).toFixed(1) : '—';
     const recom = rs.length ? Math.round(rs.filter(x => x.e.recomienda).length / rs.length * 100) + '%' : '—';
     const estrellas = n => `<span class="estrellas-mini">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= n ? 'on' : ''}">★</i>`).join('')}</span>`;
-    return `<div class="seccion"><h2>${FC.ico('comodin')} Encuesta de satisfacción</h2>
+    const nv = lista.filter(p => p.progreso?.nps).map(p => ({ p, n: p.progreso.nps }));
+    const pct = f => nv.length ? Math.round(nv.filter(f).length / nv.length * 100) : 0;
+    const promo = pct(x => x.n.valor >= 9), det = pct(x => x.n.valor <= 6), pas = nv.length ? 100 - promo - det : 0;
+    const npsHtml = `<div class="tarjeta" style="margin-bottom:14px">
+        <div class="nps-resumen">
+          <div class="nps-score ${nv.length ? (promo - det >= 50 ? 'alto' : promo - det >= 0 ? 'medio' : 'bajo') : ''}"><small>NPS</small><b>${nv.length ? promo - det : '—'}</b><span>${nv.length} respuesta(s)</span></div>
+          <div class="nps-barras">
+            <div><span>Promotores (9–10)</span><div class="barra"><div class="r" style="width:${promo}%"></div></div><b>${promo}%</b></div>
+            <div><span>Pasivos (7–8)</span><div class="barra"><div class="p" style="width:${pas}%"></div></div><b>${pas}%</b></div>
+            <div><span>Detractores (0–6)</span><div class="barra"><div class="d" style="width:${det}%"></div></div><b>${det}%</b></div>
+          </div>
+        </div>
+        <p class="muted" style="font-size:13px;margin-top:8px">NPS = % de promotores − % de detractores (de −100 a 100). Se pregunta al terminar la etapa previa.</p>
+        ${nv.length ? `<div class="table-wrap" style="margin-top:10px"><table><thead><tr><th>Participante</th><th class="num">Nota</th><th>¿Por qué?</th></tr></thead><tbody>
+          ${nv.map(({ p, n }) => `<tr><td><b>${esc(p.nombre)}</b></td><td class="num"><span class="nps-chip n${n.valor <= 6 ? 'd' : n.valor <= 8 ? 'p' : 'r'}">${n.valor}</span></td><td>${esc(n.motivo || '—')}</td></tr>`).join('')}</tbody></table></div>` : ''}
+      </div>`;
+    return `<div class="seccion"><h2>${FC.ico('tendencia')} NPS · ¿Lo recomendarían?</h2>${npsHtml}</div>
+      <div class="seccion"><h2>${FC.ico('comodin')} Encuesta de satisfacción</h2>
       <div class="tarjeta">
         <div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));display:grid;margin-bottom:12px">
           <div class="stat"><span class="stat-ic t-azul">${FC.ico('usuarios')}</span><div><small>Respuestas</small>${rs.length}</div></div>
@@ -686,6 +800,7 @@ FC.App = (() => {
       case 'ver-resultado': verResultado(m.ranking[m.nivel][Number(el.dataset.i)]); break;
       case 'csv': exportarCSV(m.nivel); break;
       case 'csv-inscritos': exportarInscritos(); break;
+      case 'ver-foto': { const p = m.lista.find(x => x.id === el.dataset.id); modal(`<div class="foto-grande"><img src="${fotos[p.id]}" alt="Foto de ${esc(p.nombre)}"><h3>${esc(p.progreso?.invitacion?.nombre || p.nombre)}</h3><p class="muted">@${esc(p.usuario)}</p></div>`); break; }
       case 'quitar-inscrito': {
         const p = m.lista.find(x => x.id === el.dataset.id);
         const v = p?.progreso?.invitacion || {};
@@ -702,7 +817,7 @@ FC.App = (() => {
         break;
       }
       case 'reiniciar-comodines': comodinesPrueba = {}; render(); break;
-      case 'simular-previa': iniciarDemo({ previaCompleta: true }); setTimeout(() => abrirInvitacion(true), 300); break;
+      case 'simular-previa': iniciarDemo({ previaCompleta: true }); setTimeout(() => abrirEtapaFinal(true), 300); break;
       case 'probar-caso': {
         const nv = FC.NIVELES.find(x => x.n === n);
         FC.Caso.abrir({ casoId: nv.caso, modo: 'prueba', etiqueta: `Nivel ${n} · ${nv.titulo}`, alCerrar: render });
@@ -740,8 +855,8 @@ FC.App = (() => {
     descargarCSV(filas, 'financial-challenge-inscritos-25-noviembre.csv');
   }
   function exportarEncuesta() {
-    const filas = [['Participante', 'Usuario', 'Satisfacción (1-5)', 'Utilidad (1-5)', '¿Recomendaría?', 'Comentario', 'Fecha']];
-    (ui.master.lista || []).filter(p => p.progreso?.encuesta).forEach(p => { const e = p.progreso.encuesta; filas.push([p.nombre, p.usuario, e.satisfaccion, e.utilidad, e.recomienda ? 'Sí' : 'No', e.comentario, new Date(e.fecha).toLocaleString('es-PE')]); });
+    const filas = [['Participante', 'Usuario', 'NPS (0-10)', 'Motivo NPS', 'Satisfacción (1-5)', 'Utilidad (1-5)', '¿Recomendaría?', 'Comentario']];
+    (ui.master.lista || []).filter(p => p.progreso?.encuesta || p.progreso?.nps).forEach(p => { const e = p.progreso.encuesta || {}, n = p.progreso.nps || {}; filas.push([p.nombre, p.usuario, n.valor ?? '', n.motivo || '', e.satisfaccion ?? '', e.utilidad ?? '', e.recomienda == null ? '' : e.recomienda ? 'Sí' : 'No', e.comentario || '']); });
     descargarCSV(filas, 'financial-challenge-encuesta.csv');
   }
   function exportarCSV(n) {
@@ -834,7 +949,12 @@ FC.App = (() => {
       case 'volver-acceso': ir('ruta'); return;
       case 'salir-demo': salirDemo(); return;
       case 'repaso': abrirRepaso(); return;
-      case 'invitacion': inv.editando = false; inv.error = null; abrirInvitacion(); return;
+      case 'invitacion': inv.editando = false; inv.error = null; abrirEtapaFinal(); return;
+      case 'foto-camara': encenderCamara(); return;
+      case 'foto-capturar': capturarFoto(); return;
+      case 'foto-repetir': fotoTomada = null; abrirFoto(); encenderCamara(); return;
+      case 'foto-guardar': guardarFoto(); return;
+      case 'foto-omitir': apagarCamara(); fotoTomada = null; prog().fotoPaso = 'omitida'; guardarP(); abrirEtapaFinal(); return;
       case 'invitacion-cambiar': inv.editando = true; abrirInvitacion(); return;
       case 'actualizar': sincronizar(); return;
       case 'reenviar': reintentarEnvios(); return;
@@ -849,7 +969,7 @@ FC.App = (() => {
     $('modal').classList.toggle('grande', grande);
     $('modal').hidden = false;
   }
-  function cerrarModal() { $('modal').hidden = true; }
+  function cerrarModal() { apagarCamara(); $('modal').hidden = true; }
 
   // ---------- Arranque ----------
   function init() {
@@ -857,8 +977,9 @@ FC.App = (() => {
     FC.Caso.init();
     document.querySelectorAll('#nav button[data-vista]').forEach(b => b.addEventListener('click', () => ir(b.dataset.vista)));
     $('nav-salir').addEventListener('click', cerrarSesion);
+    $('modal').addEventListener('change', e => { if (e.target.name === 'nps') { nps.error = null; document.querySelector('#form-nps .mensaje-error')?.remove(); } });
     $('modal').addEventListener('change', e => { if (e.target.name === 'respuesta' && e.target.form?.id === 'form-invitacion') actualizarCamposInvitacion(e.target.form); });
-    $('modal').addEventListener('submit', e => { if (e.target.id === 'form-invitacion') { e.preventDefault(); responderInvitacion(e.target); } });
+    $('modal').addEventListener('submit', e => { if (e.target.id === 'form-invitacion') { e.preventDefault(); responderInvitacion(e.target); } if (e.target.id === 'form-nps') { e.preventDefault(); responderNps(e.target); } });
     $('modal').addEventListener('click', e => { if (e.target.closest('[data-cerrar]')) cerrarModal(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('modal').hidden) cerrarModal(); });
     try { P = JSON.parse(localStorage.getItem(SESION_KEY)); } catch { P = null; }
