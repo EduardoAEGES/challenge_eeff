@@ -86,6 +86,8 @@ FC.App = (() => {
     const vistas = { ruta: vRuta, progreso: vProgreso, master: vMaster };
     $('vista').innerHTML = bannerDemo() + (vistas[ui.vista] || vRuta)();
     $('panel').innerHTML = vPanel();
+    // Celular: XP, corazones y lecciones en la barra superior
+    $('stats-movil').innerHTML = P ? `<span title="XP">${FC.ico('rayo', 't-dorado')}<b>${prog().xp}</b></span><span title="Corazones">${FC.ico('corazon', 't-rojo')}<b>${prog().corazones}</b></span><span title="Lecciones">${FC.ico('libro', 't-azul')}<b>${IDS_LECCIONES.filter(id => prog().lecciones[id]?.aprobada).length}/${TOTAL_LECCIONES}</b></span>` : '';
     renderEncuesta();
     if (P && !P.demo && !ui.etapaFinalMostrada && etapaPreviaCompleta() && !prog().invitacion && $('modal').hidden && $('leccion').hidden && $('caso').hidden) {
       ui.etapaFinalMostrada = true;
