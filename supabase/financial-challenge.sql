@@ -52,9 +52,6 @@ create table if not exists public.fc_resultados (
 
 -- Última señal de vida de cada participante (para el monitoreo en vivo del master)
 alter table public.fc_participantes add column if not exists visto timestamptz;
--- Foto opcional del participante (con su consentimiento), JPEG pequeño en base64
-alter table public.fc_participantes add column if not exists foto text;
-alter table public.fc_participantes add column if not exists foto_fecha timestamptz;
 
 alter table public.fc_config enable row level security;
 alter table public.fc_participantes enable row level security;
@@ -148,8 +145,7 @@ returns jsonb language plpgsql stable security definer set search_path = public 
 begin
   if not fc_es_master(p_master) then raise exception 'MASTER'; end if;
   return coalesce((select jsonb_agg(fc_json_participante(p) || jsonb_build_object('clave', p.clave, 'creado', p.creado,
-                     'hace', case when p.visto is null then null else floor(extract(epoch from now() - p.visto))::int end,
-                     'tiene_foto', p.foto is not null) order by p.creado)
+                     'hace', case when p.visto is null then null else floor(extract(epoch from now() - p.visto))::int end) order by p.creado)
                    from fc_participantes p), '[]'::jsonb);
 end $$;
 
@@ -233,31 +229,11 @@ begin
   update fc_participantes set progreso = progreso - 'invitacion', actualizado = now() where id = p_id;
 end $$;
 
--- ---------- Foto del participante (opcional, con consentimiento) ----------
-create or replace function public.fc_foto(p_usuario text, p_clave text, p_foto text)
-returns void language plpgsql security definer set search_path = public as $$
-begin
-  if p_foto is not null and (p_foto !~ '^data:image/jpeg;base64,[A-Za-z0-9+/=]+$' or length(p_foto) > 200000) then
-    raise exception 'FOTO_INVALIDA';
-  end if;
-  update fc_participantes set foto = p_foto, foto_fecha = case when p_foto is null then null else now() end, visto = now()
-    where usuario = lower(trim(p_usuario)) and clave = p_clave;
-  if not found then raise exception 'CREDENCIALES'; end if;
-end $$;
-
-create or replace function public.fc_admin_foto(p_master text, p_id uuid)
-returns text language plpgsql stable security definer set search_path = public as $$
-begin
-  if not fc_es_master(p_master) then raise exception 'MASTER'; end if;
-  return (select foto from fc_participantes where id = p_id);
-end $$;
-
 grant execute on function public.fc_registrar(text, text, text, text), public.fc_entrar(text, text), public.fc_guardar(text, text, jsonb),
   public.fc_enviar_resultado(text, text, int, int[], int, int, boolean, int, jsonb), public.fc_podio(int),
   public.fc_admin_listar(text), public.fc_admin_habilitar(text, uuid[], int, boolean), public.fc_admin_ranking(text, int),
   public.fc_admin_borrar_resultado(text, uuid), public.fc_admin_borrar_participante(text, uuid),
-  public.fc_invitacion_cupos(), public.fc_invitacion(text, text, text, text, text, text), public.fc_admin_quitar_inscripcion(text, uuid),
-  public.fc_foto(text, text, text), public.fc_admin_foto(text, uuid)
+  public.fc_invitacion_cupos(), public.fc_invitacion(text, text, text, text, text, text), public.fc_admin_quitar_inscripcion(text, uuid)
   to anon, authenticated;
 revoke execute on function public.fc_es_master(text), public.fc_json_participante(fc_participantes) from anon, authenticated, public;
 
