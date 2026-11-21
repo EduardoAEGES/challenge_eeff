@@ -617,3 +617,10 @@ p.invita-cupos { background: var(--superficie-2); color: var(--texto-suave); fon
 .nps-chip { display: inline-grid; place-items: center; min-width: 30px; padding: 2px 8px; border-radius: 8px; font-weight: 900; }
 .nps-chip.nr { background: var(--ok-fondo); color: var(--ok-texto); } .nps-chip.np { background: #fff6d6; color: #7a5600; } .nps-chip.nd { background: var(--mal-fondo); color: var(--mal-texto); }
 @media (max-width: 600px) { .nps-resumen { grid-template-columns: 1fr; } .nps-barras > div { grid-template-columns: 110px 1fr 40px; } }
+
+/* Patrocinador */
+.patrocinador { display: block; margin-top: 10px; font-size: 12px; font-weight: 700; color: var(--texto-suave); text-decoration: none; line-height: 1.4; }
+.patrocinador b { color: var(--certus); font-weight: 900; }
+.patrocinador:hover b { text-decoration: underline; }
+.acceso-patrocinador { align-self: center; text-align: center; margin-top: 4px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .patrocinador b { color: #cfe0ff; } }

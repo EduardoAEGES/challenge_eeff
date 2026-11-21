@@ -115,6 +115,7 @@ FC.App = (() => {
         <button class="btn btn-certus btn-bloque" type="submit">${registro ? 'Crear mi cuenta' : 'Entrar'}</button>
       </form>
       <button class="enlace" type="button" data-accion="ir-master" style="align-self:center">Soy el facilitador (master)</button>
+      <a class="patrocinador acceso-patrocinador" href="https://gabineteestrategicodigital.com" target="_blank" rel="noopener">Patrocinado por <b>Gabinete Estratégico Digital E.I.R.L.</b></a>
       ${FC.Datos.modo === 'local' ? '<p class="nota-acceso">Modo local: las cuentas se guardan solo en esta computadora.</p>' : ''}`;
   }
 
