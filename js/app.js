@@ -16,7 +16,7 @@ FC.App = (() => {
 
   let P = null;            // participante con sesión: { usuario, clave, nombre, condicion, habilitado, resultados, progreso, demo? }
   let participanteReal = null;
-  const ui = { vista: 'ruta', acceso: 'registro', msg: null, nuevaCuenta: null, master: { lista: null, ranking: {}, nivel: 6, error: null, ver: {}, sel: new Set(), top: 4 } };
+  const ui = { vista: 'ruta', acceso: 'registro', msg: null, nuevaCuenta: null, master: { lista: null, ranking: {}, nivel: 6, vivo: 6, detalle: null, error: null, ver: {}, sel: new Set(), top: 4 } };
   let sincronizando = null;
 
   const MASTER_REFRESCO = 5000; // ms entre actualizaciones del panel master
@@ -73,8 +73,12 @@ FC.App = (() => {
   const resultadoCaso = n => P.resultados?.[n] || casoLocal(n).resultado;
 
   // ---------- Navegación ----------
+  // Al recargar la página se vuelve a la misma pantalla (y al caso abierto, si lo había).
+  const VISTA_SES = 'fc-vista', CASO_SES = 'fc-caso-abierto';
+  const recordar = (k, v) => { try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v); } catch { /* */ } };
+  const recordado = k => { try { return sessionStorage.getItem(k); } catch { return null; } };
   function ir(vista) {
-    ui.vista = vista; ui.msg = null; render(); window.scrollTo(0, 0);
+    ui.vista = vista; ui.msg = null; recordar(VISTA_SES, vista); render(); window.scrollTo(0, 0);
     if (vista === 'master' && esMaster() && !P?.demo) cargarMaster(); // datos frescos al entrar al panel
   }
 
@@ -491,13 +495,14 @@ FC.App = (() => {
       aceptar: '¡Comenzar!', cancelar: 'Todavía no'
     })) return;
     if (!c.estado) { c.estado = { elecciones: [], inicio: Date.now(), escenas: [], comodinUsado: false }; guardarP(); }
+    if (!P.demo && !yaTermino) recordar(CASO_SES, String(n));
     FC.Caso.abrir({
       casoId: nv.caso, modo: 'competencia', etiqueta: `Nivel ${n} · ${nv.etapa} · ${nv.titulo}${P.demo ? ' · DEMOSTRACIÓN' : ''}`,
       estado: c.estado,
       alGuardar: est => { c.estado = est; guardarP(); },
       alTerminar: res => { if (!P.demo) { c.resultado = { ...res, fecha: new Date().toISOString() }; c.pendienteEnvio = true; guardarP(); enviarResultado(n); } },
       podio: n === 7 ? () => FC.Datos.podio(7) : null,
-      alCerrar: render
+      alCerrar: () => { recordar(CASO_SES, null); render(); }
     });
   }
 
@@ -532,9 +537,131 @@ FC.App = (() => {
   // ---------- Master ----------
   // Estado en vivo de un participante a partir de su última señal (segundos desde el servidor)
   const estadoVivo = hace => hace == null ? ['<span class="punto gris"></span>', 'Nunca conectado', 0] : hace < 60 ? ['<span class="punto verde"></span>', 'En línea', 2] : hace < 300 ? ['<span class="punto ambar"></span>', `Inactivo ${Math.floor(hace / 60)} min`, 1] : ['<span class="punto gris"></span>', 'Desconectado', 0];
+  const mmss = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+  // ---------- Competencia en vivo: reconstruye la pantalla de cada participante desde su avance guardado ----------
+  function pasosTotales(caso, r) {
+    let total = r.pasos.filter(x => !['escena', 'explicacion'].includes(x.nodo.tipo)).length;
+    for (let id = r.pendiente, vistos = 0; id && caso.nodos[id] && caso.nodos[id].tipo !== 'fin' && vistos < 99; vistos++) {
+      const nodo = caso.nodos[id];
+      if (!['escena', 'explicacion'].includes(nodo.tipo)) total++;
+      id = nodo.tipo === 'decision' ? nodo.opciones[0].sig : nodo.sig;
+    }
+    return total;
+  }
+  function enVivo(p, n) {
+    const nv = FC.NIVELES.find(x => x.n === n);
+    const caso = FC.CASOS[nv.caso];
+    const local = p.progreso?.casos?.[n] || {};
+    const final = p.resultados?.[n];
+    const est = local.estado;
+    if (!est && !final) return { fase: p.habilitado.includes(n) ? 'espera' : 'nohab' };
+    const r = FC.Motor.recorrer(caso, est?.elecciones || final?.elecciones || [], FC.VIDAS_COMPETENCIA);
+    if (r.error) return { fase: 'error' };
+    const hechos = r.pasos.filter(x => !['escena', 'explicacion'].includes(x.nodo.tipo)).length;
+    const preguntas = r.pasos.filter(x => x.nodo.tipo === 'analisis' || x.nodo.tipo === 'pregunta');
+    return {
+      fase: final ? 'termino' : local.resultado ? 'pendiente' : 'jugando',
+      caso, r, est, final, hechos, total: Math.max(hechos, pasosTotales(caso, r)),
+      nodo: r.pendiente ? caso.nodos[r.pendiente] : null,
+      aciertos: preguntas.filter(x => x.acierto).length, respondidas: preguntas.length,
+      vidas: final ? final.vidas : r.vidas, comodin: Boolean(est?.comodinUsado),
+      puntaje: final ? final.puntaje : local.resultado ? local.resultado.puntaje : FC.Motor.puntaje(r).total,
+      segundos: final ? final.segundos : local.resultado ? local.resultado.segundos : null
+    };
+  }
+  const TIPO_NODO = { decision: ['brujula', 'Decisión'], analisis: ['lupa', 'Análisis'], pregunta: ['libro', 'Concepto'] };
+  function filaVivo(p, n, i) {
+    const v = enVivo(p, n);
+    const conexion = `${estadoVivo(p.hace)[0]} ${estadoVivo(p.hace)[1]}`;
+    const nombre = `<b>${esc(p.nombre)}</b><br><small class="muted">@${esc(p.usuario)}</small>`;
+    if (v.fase === 'espera' || v.fase === 'nohab' || v.fase === 'error')
+      return `<tr class="vivo-inactivo"><td style="white-space:nowrap">${conexion}</td><td>${nombre}</td><td colspan="6"><span class="chip">${v.fase === 'espera' ? 'Habilitado · aún no empieza' : v.fase === 'nohab' ? 'No habilitado' : 'Avance ilegible'}</span></td><td></td></tr>`;
+    const pct = Math.round((v.hechos / v.total) * 100);
+    const ahora = v.fase === 'jugando' && v.nodo
+      ? `${FC.ico(TIPO_NODO[v.nodo.tipo]?.[0] || 'pregunta')} <b>${TIPO_NODO[v.nodo.tipo]?.[1] || ''}:</b> ${esc(v.nodo.pregunta || '')}`
+      : v.fase === 'pendiente' ? `<span class="chip dorado">Terminó · envío pendiente</span>` : `<span class="chip verde">${FC.ico('check')} Terminó</span>`;
+    const tiempo = v.segundos != null ? mmss(v.segundos) : v.est?.inicio ? `<span data-desde="${v.est.inicio}">${mmss(Math.max(0, Math.floor((Date.now() - v.est.inicio) / 1000)))}</span>` : '—';
+    return `<tr>
+      <td style="white-space:nowrap">${conexion}</td>
+      <td>${nombre}</td>
+      <td style="min-width:120px"><small class="muted" style="font-weight:800">Paso ${Math.min(v.hechos + (v.fase === 'jugando' ? 1 : 0), v.total)} de ${v.total}</small><div class="mini-barra"><div style="width:${pct}%"></div></div></td>
+      <td class="vivo-ahora"><small>${ahora}</small></td>
+      <td class="num">${FC.ico('corazon', 't-rojo')} ${v.vidas}</td>
+      <td class="num">${v.aciertos}/${v.respondidas}</td>
+      <td>${v.comodin ? FC.ico('comodin') + ' usado' : '—'}</td>
+      <td class="num" style="white-space:nowrap"><b>${tiempo}</b><br><small class="muted">${v.puntaje} pts${v.fase === 'jugando' ? ' proy.' : ''}</small></td>
+      <td><button class="btn-icono" title="Ver su pantalla en vivo" data-accion="ver-vivo" data-i="${i}">${FC.ico('ojo')}</button></td>
+    </tr>`;
+  }
+  function seccionVivo(lista) {
+    const m = ui.master, n = m.vivo;
+    const orden = { jugando: 0, pendiente: 1, termino: 2, espera: 3, error: 4, nohab: 5 };
+    const filas = lista.map(p => ({ p, v: enVivo(p, n) })).filter(x => x.v.fase !== 'nohab')
+      .sort((a, b) => orden[a.v.fase] - orden[b.v.fase] || (b.v.hechos || 0) - (a.v.hechos || 0));
+    m.vivoLista = filas.map(x => x.p);
+    const cuenta = f => filas.filter(x => x.v.fase === f).length;
+    return `<div class="seccion"><h2>${FC.ico('pantalla')} Competencia en vivo <small class="muted" style="font-size:13px">· cada estudiante, paso a paso</small></h2>
+      <nav class="tabs">${[6, 7].map(k => `<button class="tab${k === n ? ' activa' : ''}" data-accion="tab-vivo" data-n="${k}">Nivel ${k} · ${esc(FC.NIVELES.find(x => x.n === k).titulo)}</button>`).join('')}</nav>
+      <p class="muted" style="font-weight:700;margin:0 0 10px">${cuenta('jugando')} jugando · ${cuenta('termino') + cuenta('pendiente')} terminaron · ${cuenta('espera')} sin empezar</p>
+      ${filas.length ? `<div class="table-wrap"><table class="tabla-vivo"><thead><tr><th>Estado</th><th>Participante</th><th>Avance</th><th>Pantalla actual</th><th class="num">Vidas</th><th class="num">Aciertos</th><th>Comodín</th><th class="num">Tiempo</th><th></th></tr></thead>
+        <tbody>${filas.map((x, i) => filaVivo(x.p, n, i)).join('')}</tbody></table></div>`
+        : `<p class="muted">Nadie tiene habilitado el nivel ${n} todavía.</p>`}
+    </div>`;
+  }
+  function detalleVivoHTML(p, n) {
+    const v = enVivo(p, n);
+    const cab = `<h2 style="font-size:22px;font-weight:900">${esc(p.nombre)} <small class="muted" style="font-size:14px">@${esc(p.usuario)} · Nivel ${n}</small></h2>
+      <p class="muted" style="margin:4px 0 14px;font-weight:700">${estadoVivo(p.hace)[0]} ${estadoVivo(p.hace)[1]} · se actualiza cada ${MASTER_REFRESCO / 1000} s</p>`;
+    if (!v.r) return `<div id="vivo-detalle">${cab}<p class="muted">Aún no empieza el caso.</p></div>`;
+    const tiempo = v.segundos != null ? mmss(v.segundos) : v.est?.inicio ? `<span data-desde="${v.est.inicio}">${mmss(Math.max(0, Math.floor((Date.now() - v.est.inicio) / 1000)))}</span>` : '—';
+    const stats = `<div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(120px,1fr));margin-bottom:14px">
+      <div class="stat"><span class="stat-ic t-azul">${FC.ico('bandera')}</span><div><small>Avance</small>${v.hechos}/${v.total}</div></div>
+      <div class="stat"><span class="stat-ic t-rojo">${FC.ico('corazon')}</span><div><small>Vidas</small>${v.vidas}</div></div>
+      <div class="stat"><span class="stat-ic t-verde">${FC.ico('check')}</span><div><small>Aciertos</small>${v.aciertos}/${v.respondidas}</div></div>
+      <div class="stat"><span class="stat-ic t-morado">${FC.ico('reloj')}</span><div><small>Tiempo</small>${tiempo}</div></div>
+      <div class="stat"><span class="stat-ic t-dorado">${FC.ico('trofeo')}</span><div><small>${v.fase === 'jugando' ? 'Puntaje proyectado' : 'Puntaje'}</small>${v.puntaje}</div></div>
+      <div class="stat"><span class="stat-ic t-dorado">${FC.ico('comodin')}</span><div><small>Comodín</small>${v.comodin ? 'Usado' : 'Disponible'}</div></div>
+    </div>`;
+    const ahora = v.fase === 'jugando' && v.nodo ? `<div class="tarjeta vivo-pantalla"><div class="ej-etiqueta">${FC.ico('envivo')} Ahora en pantalla · ${TIPO_NODO[v.nodo.tipo]?.[1] || ''}</div>
+        ${v.nodo.texto ? `<p style="font-weight:600;margin:6px 0">${v.nodo.nombre ? `<small class="muted">${esc(v.nodo.nombre)}</small><br>` : ''}${esc(v.nodo.texto)}</p>` : ''}
+        <h3 style="margin:8px 0">${esc(v.nodo.pregunta || '')}</h3>
+        <ol type="A" style="margin:0;padding-left:22px;line-height:1.7;font-weight:600">${FC.Motor.opcionesDe(v.nodo).map(o => `<li>${esc(o)}</li>`).join('')}</ol></div>`
+      : `<div class="tarjeta"><b>${v.fase === 'pendiente' ? 'Terminó el caso; su resultado aún no llega al servidor (se reintenta solo).' : `${FC.ico('check')} Terminó el caso.`}</b></div>`;
+    const historial = v.r.pasos.filter(x => !['escena', 'explicacion'].includes(x.nodo.tipo)).map((x, k) => {
+      const ops = FC.Motor.opcionesDe(x.nodo);
+      const marca = x.nodo.tipo === 'decision' ? (x.error ? `<span class="chip rojo">Alto riesgo · −1 vida</span>` : '<span class="chip azul">Decisión</span>')
+        : x.acierto ? '<span class="chip verde">Correcto</span>' : `<span class="chip rojo">Incorrecto · −1 vida</span>`;
+      return `<li><div><small class="muted">${k + 1}. ${TIPO_NODO[x.nodo.tipo]?.[1] || ''}</small> ${marca}</div>
+        <div style="font-weight:700">${esc(x.nodo.pregunta || '')}</div>
+        <div>Eligió: <b>${esc(ops[x.eleccion] ?? '—')}</b>${x.nodo.tipo !== 'decision' && !x.acierto ? `<br><small class="muted">Correcta: ${esc(ops[x.correcta])}</small>` : ''}</div></li>`;
+    }).reverse().join('');
+    return `<div id="vivo-detalle">${cab}${stats}${ahora}
+      <h3 style="margin:16px 0 8px">Recorrido (lo más reciente primero)</h3>
+      ${historial ? `<ol class="vivo-historial">${historial}</ol>` : '<p class="muted">Todavía no responde ninguna pregunta.</p>'}
+      <details style="margin-top:14px"><summary style="font-weight:800;cursor:pointer">Estados financieros proyectados</summary><div style="margin-top:10px">${FC.Caso.tablasEstados(v.r.actual)}</div></details></div>`;
+  }
+  function abrirDetalleVivo(p) {
+    ui.master.detalle = { id: p.id, n: ui.master.vivo };
+    modal(detalleVivoHTML(p, ui.master.vivo), true);
+    FC.Caso.activarTabs($('modal-contenido'));
+  }
+  function refrescarDetalleVivo() {
+    const d = ui.master.detalle;
+    if (!d || $('modal').hidden || !$('vivo-detalle')) return;
+    const p = (ui.master.lista || []).find(x => x.id === d.id);
+    if (!p) return;
+    const abierto = $('modal-contenido').querySelector('details')?.open;
+    const scroll = $('modal-contenido').closest('.modal-caja')?.scrollTop;
+    $('modal-contenido').innerHTML = detalleVivoHTML(p, d.n);
+    FC.Caso.activarTabs($('modal-contenido'));
+    if (abierto) $('modal-contenido').querySelector('details').open = true;
+    if (scroll != null) $('modal-contenido').closest('.modal-caja').scrollTop = scroll;
+  }
+
   function actividad(p) {
     const casos = p.progreso?.casos || {};
-    for (const n of [7, 6]) if (casos[n]?.estado && !p.resultados?.[n]) return `${FC.ico('diana')} Jugando nivel ${n} · decisión ${(casos[n].estado.elecciones || []).length + 1}`;
+    for (const n of [7, 6]) if (casos[n]?.estado && !p.resultados?.[n]) { const v = enVivo(p, n); return `${FC.ico('diana')} Jugando nivel ${n}${v.total ? ` · paso ${Math.min(v.hechos + 1, v.total)} de ${v.total}` : ''}`; }
     for (const n of [7, 6]) if (p.resultados?.[n]) return `${FC.ico('check')} Terminó nivel ${n}`;
     const lec = Object.entries(p.progreso?.lecciones || {}).filter(([, l]) => l.aprobada);
     return lec.length ? `${FC.ico('libro')} Lecciones (${lec.length} aprobadas)` : '— Sin actividad';
@@ -651,6 +778,8 @@ FC.App = (() => {
           <div class="stat"><span class="stat-ic t-dorado">${FC.ico('bandera')}</span><div><small>Terminaron N6 / N7</small>${terminaron(6)} / ${terminaron(7)}</div></div>
         </div></div>
 
+      ${seccionVivo(lista)}
+
       <div class="seccion"><h2>${FC.ico('pizarra')} Nivel 5 · Clase guiada</h2>
         <div class="tarjeta"><p class="muted" style="font-weight:600;margin-bottom:10px">Proyecta y resuelve cada subnivel con la clase. No hay vidas ni puntaje; el comodín se puede usar libremente para mostrar cómo funciona.</p>
           <div class="codigos">${FC.NIVELES.find(n => n.subniveles).subniveles.map(sb => `<button class="btn btn-azul btn-chico" data-accion="guiado-master" data-id="${sb.id}">${FC.icono(sb.icono)} ${esc(sb.titulo)}</button>`).join('')}
@@ -708,10 +837,11 @@ FC.App = (() => {
       const cambio = firma !== m.firma || m.error;
       m.firma = firma; m.lista = lista; m.ranking = { 6: r6, 7: r7 }; m.error = null;
       m.actualizado = new Date().toLocaleTimeString('es-PE');
-      if (!cambio && ui.vista === 'master') { const t = document.querySelector('.seccion h2 small'); if (t) t.textContent = `· se actualiza cada ${MASTER_REFRESCO / 1000} s · última: ${m.actualizado}`; return; }
+      if (!cambio && ui.vista === 'master') { const t = document.querySelector('.seccion h2 small'); if (t) t.textContent = `· se actualiza cada ${MASTER_REFRESCO / 1000} s · última: ${m.actualizado}`; refrescarDetalleVivo(); return; }
       for (const id of [...m.sel]) if (!lista.some(p => p.id === id)) m.sel.delete(id);
     } catch (e) { m.error = e.message; m.lista = m.lista || []; } finally { cargandoMaster = false; }
     if (ui.vista === 'master' && document.activeElement?.id !== 'top-n') render();
+    refrescarDetalleVivo();
   }
 
   async function accionMaster(el) {
@@ -745,6 +875,8 @@ FC.App = (() => {
         break;
       }
       case 'tab-ranking': m.nivel = n; render(); cargarMaster(); break;
+      case 'tab-vivo': m.vivo = n; render(); break;
+      case 'ver-vivo': { const p = m.vivoLista?.[Number(el.dataset.i)]; if (p) abrirDetalleVivo(p); break; }
       case 'proyectar-podio': modal(podioHTML(m.ranking[7].slice(0, 3), 'Podio de la final'), true); FC.Sonido.completado(); FC.Leccion.confeti(); break;
       case 'ver-resultado': verResultado(m.ranking[m.nivel][Number(el.dataset.i)]); break;
       case 'csv': exportarCSV(m.nivel); break;
@@ -928,11 +1060,22 @@ FC.App = (() => {
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('modal').hidden) cerrarModal(); });
     try { P = JSON.parse(localStorage.getItem(SESION_KEY)); } catch { P = null; }
     if (P) { P.progreso = { ...progresoVacio(), ...P.progreso }; ui.acceso = 'entrar'; sincronizar(); }
+    // Recargar no saca de la pantalla: se vuelve a la vista anterior; el master sin cuenta de participante, a su panel.
+    const vistaPrevia = recordado(VISTA_SES);
+    if (['ruta', 'progreso', 'master'].includes(vistaPrevia) && (P || vistaPrevia === 'master')) ui.vista = vistaPrevia;
+    else if (!P && esMaster()) ui.vista = 'master';
     setInterval(() => { if (P && !P.demo) sincronizar(); }, 20000);
     // Monitoreo en vivo del master: refresco frecuente mientras el panel está visible
     setInterval(() => { if (ui.vista === 'master' && esMaster() && !P?.demo && !document.hidden && $('caso').hidden) cargarMaster(); }, MASTER_REFRESCO);
     document.addEventListener('visibilitychange', () => { if (!document.hidden && P && !P.demo) sincronizar(); });
+    // Cronómetros del monitoreo en vivo
+    setInterval(() => document.querySelectorAll('[data-desde]').forEach(e => { e.textContent = mmss(Math.max(0, Math.floor((Date.now() - Number(e.dataset.desde)) / 1000))); }), 1000);
     render();
+    if (ui.vista === 'master' && esMaster()) cargarMaster();
+    // Si estaba dentro de un caso de competencia, se reabre donde iba (el cronómetro nunca se detuvo).
+    const casoPrevio = Number(recordado(CASO_SES));
+    if (P && !P.demo && casoPrevio && habilitado(casoPrevio) && casoLocal(casoPrevio).estado && !resultadoCaso(casoPrevio)) abrirCaso(casoPrevio);
+    else recordar(CASO_SES, null);
   }
 
   document.addEventListener('DOMContentLoaded', init);
