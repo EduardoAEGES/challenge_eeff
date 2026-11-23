@@ -5,3 +5,6 @@
 
 # Solucionario del facilitador: no publicar (el repositorio y la web son públicos)
 *Solucionario*.docx
+
+# Resultados generados por la simulación (se recrean con node simulacion/simular-starbucks.js)
+simulacion/resultados/
