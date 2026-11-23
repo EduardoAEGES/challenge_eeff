@@ -4,6 +4,7 @@
      competencia → 10 vidas, cronómetro, 1 comodín, resultado al servidor
      prueba      → igual que competencia, sin guardar (modo master)
      guiado      → clase con el docente: sin vidas ni cronómetro, comodín libre
+                   y botón «Atrás» para volver a cualquier paso anterior
    ========================================================= */
 window.FC = window.FC || {};
 
@@ -19,14 +20,16 @@ FC.Caso = (() => {
     Object.assign(dom, {
       raiz: $('caso'), cuerpo: $('caso-cuerpo'), pie: $('caso-pie'), titulo: $('caso-titulo'), paso: $('caso-paso'), reloj: $('caso-reloj'),
       vidas: $('caso-vidas'), vidasNum: $('caso-vidas-num'), comodin: $('caso-comodin'),
-      boton: $('caso-boton'), feedback: $('caso-feedback'), fbIcono: $('caso-fb-icono'), fbTitulo: $('caso-fb-titulo'), fbTexto: $('caso-fb-texto'), aviso: $('caso-aviso')
+      boton: $('caso-boton'), atras: $('caso-atras'), feedback: $('caso-feedback'), fbIcono: $('caso-fb-icono'), fbTitulo: $('caso-fb-titulo'), fbTexto: $('caso-fb-texto'), aviso: $('caso-aviso')
     });
     dom.boton.addEventListener('click', accion);
     dom.comodin.addEventListener('click', usarComodin);
+    dom.atras.addEventListener('click', atras);
     $('caso-salir').addEventListener('click', salir);
     document.addEventListener('keydown', e => {
       if (!s || dom.raiz.hidden || !$('modal').hidden) return;
       if (e.key === 'Enter') { e.preventDefault(); if (!dom.boton.disabled) accion(); return; }
+      if (e.key === 'ArrowLeft' && !dom.atras.hidden) { e.preventDefault(); atras(); return; }
       const n = Number(e.key);
       if (s.fase === 'pregunta' && n >= 1) dom.cuerpo.querySelectorAll('.opcion')[n - 1]?.click();
     });
@@ -37,7 +40,7 @@ FC.Caso = (() => {
     const caso = FC.CASOS[opciones.casoId];
     const modo = opciones.modo || 'competencia';
     const estado = opciones.estado || { elecciones: [], inicio: Date.now(), escenas: [], comodinUsado: false };
-    s = { caso, opciones, modo, estado, fase: 'pregunta', seleccion: null, vidas: modo === 'guiado' ? null : FC.VIDAS_COMPETENCIA };
+    s = { caso, opciones, modo, estado, fase: 'pregunta', seleccion: null, vidas: modo === 'guiado' ? null : FC.VIDAS_COMPETENCIA, historial: [] };
     dom.titulo.textContent = `${opciones.etiqueta || caso.titulo}${modo === 'prueba' ? ' - MODO PRUEBA' : modo === 'guiado' ? ' - CLASE GUIADA' : ''}`;
     dom.vidas.hidden = s.vidas == null;
     dom.reloj.hidden = modo === 'guiado';
@@ -89,13 +92,15 @@ FC.Caso = (() => {
   function pintar() {
     const r = recorrido();
     pintarVidas(r);
-    if (r.terminado) return final(r);
+    // Primero las escenas o explicaciones pendientes, aunque sean las últimas del caso
     const tarjeta = r.pasos.find(p => (p.nodo.tipo === 'escena' || p.nodo.tipo === 'explicacion') && !s.estado.escenas.includes(p.id));
+    if (r.terminado && !tarjeta) return final(r);
     const respondidos = r.pasos.filter(p => p.eleccion != null).length;
     dom.paso.textContent = `Paso ${respondidos + 1}`;
     s.seleccion = null;
     limpiarFeedback();
     dom.comodin.hidden = true;
+    pintarAtras();
 
     let html;
     if (tarjeta) {
@@ -181,10 +186,25 @@ FC.Caso = (() => {
     }
   }
 
+  // ---------- Clase guiada: volver atrás ----------
+  // Antes de cada avance se guarda una foto de las elecciones y escenas vistas; «Atrás» la restaura.
+  const foto = () => ({ elecciones: s.estado.elecciones.slice(), escenas: s.estado.escenas.slice() });
+  function recordarPaso() { if (s.modo === 'guiado') s.historial.push(foto()); }
+  function pintarAtras() { dom.atras.hidden = !(s && s.modo === 'guiado' && s.historial.length); }
+  function atras() {
+    if (!s || s.modo !== 'guiado' || !s.historial.length) return;
+    const previo = s.historial.pop();
+    s.estado.elecciones = previo.elecciones;
+    s.estado.escenas = previo.escenas;
+    delete s.estado.fin;
+    FC.Sonido.tap?.();
+    pintar();
+  }
+
   function accion() {
     if (!s) return;
     if (s.fase === 'cerrar') return cerrar();
-    if (s.fase === 'escena') { s.estado.escenas.push(s.escenaId); guardar(); return pintar(); }
+    if (s.fase === 'escena') { recordarPaso(); s.estado.escenas.push(s.escenaId); guardar(); return pintar(); }
     if (s.fase === 'pregunta') return confirmar();
     if (s.fase === 'revisado') return pintar();
   }
@@ -193,6 +213,7 @@ FC.Caso = (() => {
     if (s.seleccion == null) return;
     const antes = recorrido();
     const nodo = s.caso.nodos[antes.pendiente];
+    recordarPaso();
     s.estado.elecciones.push(s.seleccion);
     const r = recorrido();
     if (r.terminado) s.estado.fin = Date.now();
@@ -228,6 +249,7 @@ FC.Caso = (() => {
     pintarVidas(r);
     dom.boton.textContent = r.terminado ? (r.sinVidas ? 'Ver resultado' : 'Ver resultado') : 'Continuar';
     dom.boton.disabled = false;
+    pintarAtras();
     dom.boton.focus();
   }
 
@@ -292,6 +314,7 @@ FC.Caso = (() => {
     dom.aviso.hidden = true; dom.comodin.hidden = true;
     dom.boton.textContent = 'Volver a la ruta'; dom.boton.disabled = false;
     s.fase = 'cerrar';
+    pintarAtras();
     const guiado = s.modo === 'guiado';
     const decisiones = r.pasos.filter(x => x.nodo.tipo === 'decision');
     const t = `${Math.floor(seg / 60)}:${String(seg % 60).padStart(2, '0')}`;
