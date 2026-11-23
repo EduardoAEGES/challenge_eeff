@@ -51,7 +51,7 @@ FC.Leccion = (() => {
     }
     const info = opciones.repaso ? null : FC.leccionPorId(id);
     s = { id, info, opciones, cola: items.slice(), total: items.length, hechos: 0, aciertos: 0, errores: 0, inicio: Date.now(), fase: 'respondiendo', actual: null };
-    dom.titulo.textContent = opciones.repaso ? 'Sesión de repaso' : `Nivel ${info.nivel.n} · ${info.leccion.titulo}${opciones.prueba ? ' · MODO PRUEBA' : ''}`;
+    dom.titulo.textContent = opciones.repaso ? 'Sesión de repaso' : `Nivel ${info.nivel.n} - ${info.leccion.titulo}${opciones.prueba ? ' - MODO PRUEBA' : ''}`;
     dom.raiz.hidden = false; dom.pie.hidden = false;
     document.body.style.overflow = 'hidden';
     cabecera(); siguiente();

@@ -53,10 +53,10 @@ FC.NIVELES = [
     titulo: 'Clase guiada con el docente',
     descripcion: 'El docente resuelve en pantalla un caso de Nike y explica cómo funcionan las decisiones, el comodín, las vidas y el puntaje. Sin vidas ni puntaje.',
     subniveles: [
-      { id: 'g1', caso: 'g1', titulo: '5.1 · Cómo funciona un caso', icono: 'play' },
-      { id: 'g2', caso: 'g2', titulo: '5.2 · Las decisiones cambian los estados', icono: 'barras' },
-      { id: 'g3', caso: 'g3', titulo: '5.3 · El comodín', icono: 'comodin' },
-      { id: 'g4', caso: 'g4', titulo: '5.4 · Vidas y puntaje', icono: 'insignia' }
+      { id: 'g1', caso: 'g1', titulo: '5.1 - Cómo funciona un caso', icono: 'play' },
+      { id: 'g2', caso: 'g2', titulo: '5.2 - Las decisiones cambian los estados', icono: 'barras' },
+      { id: 'g3', caso: 'g3', titulo: '5.3 - El comodín', icono: 'comodin' },
+      { id: 'g4', caso: 'g4', titulo: '5.4 - Vidas y puntaje', icono: 'insignia' }
     ]
   },
   {
