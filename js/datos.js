@@ -18,6 +18,7 @@ FC.Datos = (() => {
     USUARIO_EXISTE: 'Ese usuario ya existe. Elige otro.',
     CREDENCIALES: 'Usuario o contraseña incorrectos.',
     NO_HABILITADO: 'El facilitador aún no te habilitó este nivel.',
+    BLOQUEADO: 'Tu acceso está congelado por el facilitador. Consulta con él para que te lo vuelva a habilitar.',
     MASTER: 'Clave master incorrecta.',
     CUPO_LLENO: 'Lo sentimos: los 25 cupos ya están completos.',
     CORREO_INVALIDO: 'Escribe un correo electrónico válido.',
@@ -55,12 +56,13 @@ FC.Datos = (() => {
   const escribir = db => { try { localStorage.setItem(L_KEY, JSON.stringify(db)); } catch { /* */ } };
   const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36));
   const json = (db, p) => ({
-    id: p.id, usuario: p.usuario, nombre: p.nombre, condicion: p.condicion, progreso: p.progreso, habilitado: p.habilitado.slice(),
+    id: p.id, usuario: p.usuario, nombre: p.nombre, condicion: p.condicion, progreso: p.progreso, habilitado: p.habilitado.slice(), bloqueado: Boolean(p.bloqueado),
     resultados: Object.fromEntries(db.resultados.filter(r => r.participante_id === p.id).map(r => [String(r.nivel), { puntaje: r.puntaje, segundos: r.segundos, vidas: r.vidas }]))
   });
   const buscar = (db, usuario, clave) => {
     const p = db.participantes.find(x => x.usuario === String(usuario).trim().toLowerCase() && x.clave === clave);
     if (!p) throw error('CREDENCIALES');
+    if (p.bloqueado) throw error('BLOQUEADO');
     return p;
   };
   const ordenar = (a, b) => b.puntaje - a.puntaje || a.segundos - b.segundos;
@@ -121,6 +123,11 @@ FC.Datos = (() => {
       for (const p of db.participantes) if (p_ids.includes(p.id)) { p.habilitado = p.habilitado.filter(n => n !== p_nivel); if (p_valor) p.habilitado.push(p_nivel); }
       escribir(db);
     },
+    async fc_admin_bloquear({ p_master, p_ids, p_valor }) {
+      await exigirMaster(p_master); const db = leer();
+      for (const p of db.participantes) if (p_ids.includes(p.id)) p.bloqueado = Boolean(p_valor);
+      escribir(db);
+    },
     async fc_admin_ranking({ p_master, p_nivel }) {
       await exigirMaster(p_master); const db = leer();
       return db.resultados.filter(r => r.nivel === p_nivel).sort(ordenar).map(r => {
@@ -153,6 +160,7 @@ FC.Datos = (() => {
     admin: {
       listar: master => llamar('fc_admin_listar', { p_master: master }),
       habilitar: (master, ids, nivel, valor) => llamar('fc_admin_habilitar', { p_master: master, p_ids: ids, p_nivel: nivel, p_valor: valor }),
+      bloquear: (master, ids, valor) => llamar('fc_admin_bloquear', { p_master: master, p_ids: ids, p_valor: valor }),
       ranking: (master, nivel) => llamar('fc_admin_ranking', { p_master: master, p_nivel: nivel }),
       borrarResultado: (master, id) => llamar('fc_admin_borrar_resultado', { p_master: master, p_id: id }),
       quitarInscripcion: (master, id) => llamar('fc_admin_quitar_inscripcion', { p_master: master, p_id: id }),

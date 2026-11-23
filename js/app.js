@@ -16,7 +16,7 @@ FC.App = (() => {
 
   let P = null;            // participante con sesión: { usuario, clave, nombre, condicion, habilitado, resultados, progreso, demo? }
   let participanteReal = null;
-  const ui = { vista: 'ruta', acceso: 'registro', msg: null, nuevaCuenta: null, master: { lista: null, ranking: {}, nivel: 6, vivo: 6, detalle: null, error: null, ver: {}, sel: new Set(), top: 4 } };
+  const ui = { vista: 'ruta', acceso: 'registro', msg: null, nuevaCuenta: null, master: { lista: null, ranking: {}, nivel: 6, vivo: 6, detalle: null, fin: null, error: null, ver: {}, sel: new Set(), top: 4 } };
   let sincronizando = null;
 
   const MASTER_REFRESCO = 5000; // ms entre actualizaciones del panel master
@@ -39,6 +39,7 @@ FC.App = (() => {
   function aplicarServidor(d, conProgreso) {
     P.nombre = d.nombre; P.condicion = d.condicion;
     P.habilitado = (d.habilitado || []).map(Number);
+    P.bloqueado = false;
     P.resultados = d.resultados || {};
     if (conProgreso) P.progreso = { ...progresoVacio(), ...(d.progreso || {}) };
     else if (P.progreso) { // la respuesta a la invitación vive en el servidor (el master puede quitarla)
@@ -48,12 +49,30 @@ FC.App = (() => {
   async function sincronizar() {
     if (!P || P.demo || sincronizando) return;
     sincronizando = FC.Datos.entrar(P.usuario, P.clave).then(d => {
-      const antes = JSON.stringify([P.habilitado, P.resultados]);
+      const antes = JSON.stringify([P.habilitado, P.resultados, P.bloqueado]);
       aplicarServidor(d, false);
       guardarSesion();
       reintentarEnvios();
-      if (antes !== JSON.stringify([P.habilitado, P.resultados]) && $('caso').hidden && $('leccion').hidden) render();
-    }).catch(() => { /* sin conexión: se sigue con lo guardado */ }).finally(() => { sincronizando = null; });
+      if (antes !== JSON.stringify([P.habilitado, P.resultados, P.bloqueado]) && $('caso').hidden && $('leccion').hidden) render();
+    }).catch(e => {
+      if (e.codigo === 'BLOQUEADO') congelado();
+      else if (e.codigo === 'CREDENCIALES') cuentaEliminada();
+      /* sin conexión: se sigue con lo guardado */
+    }).finally(() => { sincronizando = null; });
+  }
+  // Si hay una lección o un caso abierto, se recarga la página para cerrarlos (el estado ya quedó guardado).
+  const pantallaAbierta = () => !$('caso').hidden || !$('leccion').hidden;
+  function congelado() {
+    if (!P || P.demo || P.bloqueado) return;
+    P.bloqueado = true; guardarSesion();
+    if (pantallaAbierta()) location.reload(); else render();
+  }
+  function cuentaEliminada() {
+    if (!P || P.demo) return;
+    P = null;
+    try { localStorage.removeItem(SESION_KEY); } catch { /* */ }
+    recordar(AVISO_SES, 'El facilitador eliminó tu cuenta. Si crees que es un error, consulta con él.');
+    if (pantallaAbierta()) location.reload(); else { ui.acceso = 'entrar'; ui.msg = { acceso: recordado(AVISO_SES) }; recordar(AVISO_SES, null); render(); }
   }
 
   // ---------- Progreso ----------
@@ -74,7 +93,7 @@ FC.App = (() => {
 
   // ---------- Navegación ----------
   // Al recargar la página se vuelve a la misma pantalla (y al caso abierto, si lo había).
-  const VISTA_SES = 'fc-vista', CASO_SES = 'fc-caso-abierto';
+  const VISTA_SES = 'fc-vista', CASO_SES = 'fc-caso-abierto', AVISO_SES = 'fc-aviso-acceso';
   const recordar = (k, v) => { try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v); } catch { /* */ } };
   const recordado = k => { try { return sessionStorage.getItem(k); } catch { return null; } };
   function ir(vista) {
@@ -83,7 +102,7 @@ FC.App = (() => {
   }
 
   function render() {
-    $('acceso').hidden = Boolean(P) || ui.vista === 'master';
+    $('acceso').hidden = (Boolean(P) && !P.bloqueado) || ui.vista === 'master';
     if (!$('acceso').hidden) $('acceso-caja').innerHTML = vAcceso();
     document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('activo', b.dataset.vista === ui.vista));
     $('nav-salir').hidden = !P || P.demo;
@@ -104,6 +123,14 @@ FC.App = (() => {
   function vAcceso() {
     const cab = `<header><img src="img/logo-certus.png" alt="CERTUS" width="1148" height="320"><h1>FINANCIAL CHALLENGE</h1>
       <p>El reto de los estados financieros. Aprende con lecciones cortas y compite tomando decisiones empresariales.</p></header>`;
+    if (P?.bloqueado) {
+      return `${cab}<div class="banner-demo" style="flex-direction:column;text-align:center;gap:10px"><span class="emoji">${FC.ico('candado')}</span>
+        <h2 style="margin:0">Tu acceso está congelado</h2>
+        <p>Hola, <b>${esc(P.nombre || P.usuario)}</b>. El facilitador congeló tu acceso al reto. Tu avance y tus resultados están guardados.
+        Consulta con él; cuando te lo habilite, esta pantalla se cerrará sola.</p></div>
+        <button class="btn btn-certus btn-bloque" data-accion="actualizar">${FC.ico('actualizar')} Volver a intentar</button>
+        <button class="enlace" type="button" data-accion="salir-congelado" style="align-self:center">Cerrar sesión</button>`;
+    }
     if (ui.nuevaCuenta) {
       const c = ui.nuevaCuenta;
       return `${cab}<div class="anota"><h2>${FC.ico('notas')} ¡Cuenta creada! Anota tus datos</h2>
@@ -478,7 +505,7 @@ FC.App = (() => {
   }
 
   async function abrirCaso(n) {
-    if (!habilitado(n)) return;
+    if (!habilitado(n) || P?.bloqueado) return;
     const nv = FC.NIVELES.find(x => x.n === n);
     const c = P.demo ? {} : casoLocal(n);
     const yaTermino = Boolean(resultadoCaso(n)) && !P.demo;
@@ -536,6 +563,7 @@ FC.App = (() => {
 
   // ---------- Master ----------
   // Estado en vivo de un participante a partir de su última señal (segundos desde el servidor)
+  const conexion = p => (p.bloqueado ? `<span class="chip rojo">${FC.ico('candado')} Congelado</span>` : `${estadoVivo(p.hace)[0]} ${estadoVivo(p.hace)[1]}`);
   const estadoVivo = hace => hace == null ? ['<span class="punto gris"></span>', 'Nunca conectado', 0] : hace < 60 ? ['<span class="punto verde"></span>', 'En línea', 2] : hace < 300 ? ['<span class="punto ambar"></span>', `Inactivo ${Math.floor(hace / 60)} min`, 1] : ['<span class="punto gris"></span>', 'Desconectado', 0];
   const mmss = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
@@ -573,17 +601,16 @@ FC.App = (() => {
   const TIPO_NODO = { decision: ['brujula', 'Decisión'], analisis: ['lupa', 'Análisis'], pregunta: ['libro', 'Concepto'] };
   function filaVivo(p, n, i) {
     const v = enVivo(p, n);
-    const conexion = `${estadoVivo(p.hace)[0]} ${estadoVivo(p.hace)[1]}`;
     const nombre = `<b>${esc(p.nombre)}</b><br><small class="muted">@${esc(p.usuario)}</small>`;
     if (v.fase === 'espera' || v.fase === 'nohab' || v.fase === 'error')
-      return `<tr class="vivo-inactivo"><td style="white-space:nowrap">${conexion}</td><td>${nombre}</td><td colspan="6"><span class="chip">${v.fase === 'espera' ? 'Habilitado · aún no empieza' : v.fase === 'nohab' ? 'No habilitado' : 'Avance ilegible'}</span></td><td></td></tr>`;
+      return `<tr class="vivo-inactivo"><td style="white-space:nowrap">${conexion(p)}</td><td>${nombre}</td><td colspan="6"><span class="chip">${v.fase === 'espera' ? 'Habilitado · aún no empieza' : v.fase === 'nohab' ? 'No habilitado' : 'Avance ilegible'}</span></td><td></td></tr>`;
     const pct = Math.round((v.hechos / v.total) * 100);
     const ahora = v.fase === 'jugando' && v.nodo
       ? `${FC.ico(TIPO_NODO[v.nodo.tipo]?.[0] || 'pregunta')} <b>${TIPO_NODO[v.nodo.tipo]?.[1] || ''}:</b> ${esc(v.nodo.pregunta || '')}`
       : v.fase === 'pendiente' ? `<span class="chip dorado">Terminó · envío pendiente</span>` : `<span class="chip verde">${FC.ico('check')} Terminó</span>`;
     const tiempo = v.segundos != null ? mmss(v.segundos) : v.est?.inicio ? `<span data-desde="${v.est.inicio}">${mmss(Math.max(0, Math.floor((Date.now() - v.est.inicio) / 1000)))}</span>` : '—';
     return `<tr>
-      <td style="white-space:nowrap">${conexion}</td>
+      <td style="white-space:nowrap">${conexion(p)}</td>
       <td>${nombre}</td>
       <td style="min-width:120px"><small class="muted" style="font-weight:800">Paso ${Math.min(v.hechos + (v.fase === 'jugando' ? 1 : 0), v.total)} de ${v.total}</small><div class="mini-barra"><div style="width:${pct}%"></div></div></td>
       <td class="vivo-ahora"><small>${ahora}</small></td>
@@ -612,7 +639,7 @@ FC.App = (() => {
   function detalleVivoHTML(p, n) {
     const v = enVivo(p, n);
     const cab = `<h2 style="font-size:22px;font-weight:900">${esc(p.nombre)} <small class="muted" style="font-size:14px">@${esc(p.usuario)} · Nivel ${n}</small></h2>
-      <p class="muted" style="margin:4px 0 14px;font-weight:700">${estadoVivo(p.hace)[0]} ${estadoVivo(p.hace)[1]} · se actualiza cada ${MASTER_REFRESCO / 1000} s</p>`;
+      <p class="muted" style="margin:4px 0 14px;font-weight:700">${conexion(p)} · se actualiza cada ${MASTER_REFRESCO / 1000} s</p>`;
     if (!v.r) return `<div id="vivo-detalle">${cab}<p class="muted">Aún no empieza el caso.</p></div>`;
     const tiempo = v.segundos != null ? mmss(v.segundos) : v.est?.inicio ? `<span data-desde="${v.est.inicio}">${mmss(Math.max(0, Math.floor((Date.now() - v.est.inicio) / 1000)))}</span>` : '—';
     const stats = `<div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(120px,1fr));margin-bottom:14px">
@@ -751,7 +778,7 @@ FC.App = (() => {
       return `<tr>
         <td><input type="checkbox" class="sel" data-id="${p.id}" ${m.sel.has(p.id) ? 'checked' : ''}></td>
         <td><b>${esc(p.nombre)}</b><br><small class="muted">${esc(p.condicion)}</small></td>
-        <td style="white-space:nowrap">${estadoVivo(p.hace)[0]} ${estadoVivo(p.hace)[1]}</td>
+        <td style="white-space:nowrap">${conexion(p)}</td>
         <td><small class="actividad"><b>${actividad(p)}</b></small></td>
         <td>@${esc(p.usuario)}</td>
         <td><code>${m.ver[p.id] || m.ver.todas ? esc(p.clave) : '••••••'}</code> <button class="btn-icono" title="Ver contraseña" data-accion="ver-clave" data-id="${p.id}" style="width:30px;height:30px;font-size:16px">${FC.ico('ojo')}</button></td>
@@ -776,6 +803,7 @@ FC.App = (() => {
           <div class="stat"><span class="stat-ic t-morado">${FC.ico('diana')}</span><div><small>Jugando N6 / N7</small>${jugando(6)} / ${jugando(7)}</div></div>
           <div class="stat"><span class="stat-ic t-azul">${FC.ico('edificio')}</span><div><small>Confirmados 25/11</small>${confirmados} de ${previa}</div></div>
           <div class="stat"><span class="stat-ic t-dorado">${FC.ico('bandera')}</span><div><small>Terminaron N6 / N7</small>${terminaron(6)} / ${terminaron(7)}</div></div>
+          <div class="stat"><span class="stat-ic t-rojo">${FC.ico('candado')}</span><div><small>Congelados</small>${lista.filter(p => p.bloqueado).length}</div></div>
         </div></div>
 
       ${seccionVivo(lista)}
@@ -793,6 +821,9 @@ FC.App = (() => {
             <button class="btn btn-blanco btn-chico" data-accion="habilitar" data-n="6" data-v="0" ${m.sel.size ? '' : 'disabled'}>Quitar ${nombreNivel(6)}</button>
             <button class="btn btn-certus btn-chico" data-accion="habilitar" data-n="7" data-v="1" ${m.sel.size ? '' : 'disabled'}>Habilitar ${nombreNivel(7)} (${m.sel.size})</button>
             <button class="btn btn-blanco btn-chico" data-accion="habilitar" data-n="7" data-v="0" ${m.sel.size ? '' : 'disabled'}>Quitar ${nombreNivel(7)}</button>
+            <button class="btn btn-rojo btn-chico" data-accion="bloquear" data-v="1" ${m.sel.size ? '' : 'disabled'}>${FC.ico('candado')} Congelar acceso (${m.sel.size})</button>
+            <button class="btn btn-blanco btn-chico" data-accion="bloquear" data-v="0" ${m.sel.size ? '' : 'disabled'}>${FC.ico('abierto')} Descongelar (${m.sel.size})</button>
+            <button class="btn btn-rojo btn-chico" data-accion="borrar-seleccionados" ${m.sel.size ? '' : 'disabled'}>${FC.ico('papelera')} Eliminar seleccionados (${m.sel.size})</button>
             <button class="btn btn-blanco btn-chico" data-accion="ver-todas">${m.ver.todas ? 'Ocultar contraseñas' : 'Mostrar contraseñas'}</button>
             <button class="btn btn-blanco btn-chico" data-accion="recargar-master">${FC.ico('actualizar')} Actualizar</button>
           </div>
@@ -807,11 +838,12 @@ FC.App = (() => {
       <div class="seccion"><h2>${FC.ico('trofeo')} Ranking en vivo</h2>
         <nav class="tabs">${[6, 7].map(k => `<button class="tab${k === m.nivel ? ' activa' : ''}" data-accion="tab-ranking" data-n="${k}">Nivel ${k} · ${nombreNivel(k)}</button>`).join('')}</nav>
         ${m.nivel === 7 && ranking?.length ? `<div class="tarjeta" style="margin-bottom:14px">${podioHTML(ranking.slice(0, 3), 'Podio de la final')}<div class="codigos" style="justify-content:center"><button class="btn btn-certus" data-accion="proyectar-podio">Proyectar podio en pantalla completa</button></div></div>` : ''}
-        ${ranking?.length ? `<div class="table-wrap"><table><thead><tr><th>#</th><th>Participante</th><th class="num">Puntaje</th><th class="num">Tiempo</th><th class="num">Vidas</th><th>Comodín</th><th></th></tr></thead>
-          <tbody>${ranking.map((f, i) => `<tr class="${m.nivel === 6 && i < m.top ? 'clasifica' : ''}"><td><b>${i + 1}</b></td><td><b>${esc(f.nombre)}</b><br><small class="muted">@${esc(f.usuario)}</small></td>
+        ${m.nivel === 6 && ranking?.length ? seccionFinalistas(ranking, lista) : ''}
+        ${ranking?.length ? `<div class="table-wrap"><table><thead><tr>${m.nivel === 6 ? '<th title="Pasa a la final">Final</th>' : ''}<th>#</th><th>Participante</th><th class="num">Puntaje</th><th class="num">Tiempo</th><th class="num">Vidas</th><th>Comodín</th><th></th></tr></thead>
+          <tbody>${ranking.map((f, i) => `<tr class="${m.nivel === 6 && finalistas().has(f.participante_id) ? 'clasifica' : ''}">${m.nivel === 6 ? `<td><input type="checkbox" class="fin" data-id="${f.participante_id}" ${finalistas().has(f.participante_id) ? 'checked' : ''} aria-label="Pasa a la final"></td>` : ''}<td><b>${i + 1}</b></td><td><b>${esc(f.nombre)}</b>${m.nivel === 6 && esFinalista(f.participante_id, lista) ? ` <span class="chip dorado">${FC.ico('trofeo')} Finalista</span>` : ''}${lista.find(p => p.id === f.participante_id)?.bloqueado ? ' <span class="chip rojo">Congelado</span>' : ''}<br><small class="muted">@${esc(f.usuario)}</small></td>
             <td class="num"><b>${f.puntaje}</b></td><td class="num">${Math.floor(f.segundos / 60)}:${String(f.segundos % 60).padStart(2, '0')}</td><td class="num">${FC.ico('corazon', 't-rojo')} ${f.vidas}</td><td>${f.comodin ? FC.ico('comodin') + ' usado' : '—'}</td>
             <td class="num" style="white-space:nowrap"><button class="btn-icono" title="Ver estados" data-accion="ver-resultado" data-i="${i}">${FC.ico('barras')}</button><button class="btn-icono" title="Borrar resultado (permite repetir)" data-accion="borrar-resultado" data-id="${f.id}">${FC.ico('papelera')}</button></td></tr>`).join('')}</tbody></table></div>
-          <p class="muted" style="margin-top:8px;font-weight:600;font-size:13px">Orden: mayor puntaje; si hay empate, menor tiempo.${m.nivel === 6 ? ` En verde, los ${m.top} primeros.` : ''}</p>
+          <p class="muted" style="margin-top:8px;font-weight:600;font-size:13px">Orden: mayor puntaje; si hay empate, menor tiempo.${m.nivel === 6 ? ' En verde, los marcados para la final.' : ''}</p>
           <div class="codigos"><button class="btn btn-blanco btn-chico" data-accion="csv">${FC.ico('descargar')} Exportar ranking (CSV)</button><button class="btn btn-blanco btn-chico" data-accion="recargar-ranking">${FC.ico('actualizar')} Actualizar ranking</button></div>`
           : `<p class="muted">${ranking ? 'Aún no hay resultados en este nivel.' : 'Cargando…'}</p>`}
       </div>
@@ -844,6 +876,28 @@ FC.App = (() => {
     refrescarDetalleVivo();
   }
 
+  // ---------- Finalistas: el master marca en el ranking del nivel 6 quiénes pasan a la final ----------
+  const esFinalista = (id, lista) => Boolean(lista.find(p => p.id === id)?.habilitado.includes(7));
+  // Marcas en pantalla; si aún no hay, se parte de quienes ya tienen la final habilitada.
+  function finalistas() {
+    if (!ui.master.fin && ui.master.lista) ui.master.fin = new Set(ui.master.lista.filter(p => p.habilitado.includes(7)).map(p => p.id));
+    return ui.master.fin || new Set();
+  }
+  function seccionFinalistas(ranking, lista) {
+    const marcados = new Set(lista.filter(p => finalistas().has(p.id)).map(p => p.id));
+    const actuales = lista.filter(p => p.habilitado.includes(7));
+    const igual = marcados.size === actuales.length && actuales.every(p => marcados.has(p.id));
+    return `<div class="tarjeta finalistas" style="margin-bottom:12px">
+      <p style="font-weight:700;margin:0 0 8px">${FC.ico('trofeo')} <b>Pase a la final:</b> marca en la columna «Final» a quienes pasan. Al confirmar, <b>solo ellos</b> tendrán la final habilitada; a los demás se les quita.</p>
+      <p class="muted" style="font-weight:700;margin:0 0 10px">Marcados: ${marcados.size} · Con la final habilitada ahora: ${actuales.length}${igual ? ' · sin cambios pendientes' : ' · hay cambios sin confirmar'}</p>
+      <div class="codigos" style="margin:0">
+        <button class="btn btn-certus btn-chico" data-accion="aplicar-finalistas" ${igual ? 'disabled' : ''}>${FC.ico('check')} Pasar a la final a los marcados (${marcados.size})</button>
+        <button class="btn btn-blanco btn-chico" data-accion="marcar-top">Marcar los ${ui.master.top} primeros</button>
+        <button class="btn btn-blanco btn-chico" data-accion="desmarcar-finalistas" ${marcados.size ? '' : 'disabled'}>Desmarcar todos</button>
+        ${igual ? '' : '<button class="btn btn-blanco btn-chico" data-accion="deshacer-finalistas">Deshacer cambios</button>'}
+      </div></div>`;
+  }
+  const listaCorta = nombres => (nombres.length ? `(${nombres.slice(0, 6).join(', ')}${nombres.length > 6 ? ` y ${nombres.length - 6} más` : ''})` : '');
   async function accionMaster(el) {
     const m = ui.master, n = Number(el.dataset.n);
     switch (el.dataset.accion) {
@@ -861,6 +915,40 @@ FC.App = (() => {
         const valor = el.dataset.v === '1';
         if (!await FC.confirmar({ icono: FC.ico(valor ? 'abierto' : 'candado'), titulo: `¿${valor ? 'Habilitar' : 'Quitar'} el nivel ${n}?`, texto: `Se aplicará a ${m.sel.size} participante(s) seleccionado(s).`, aceptar: valor ? 'Habilitar' : 'Quitar', tono: valor ? 'certus' : 'rojo' })) return;
         try { await FC.Datos.admin.habilitar(claveMaster(), [...m.sel], n, valor); await cargarMaster(); } catch (e) { alert(e.message); }
+        break;
+      }
+      case 'marcar-top': m.fin = new Set((m.ranking[6] || []).slice(0, m.top).map(f => f.participante_id)); render(); break;
+      case 'desmarcar-finalistas': m.fin = new Set(); render(); break;
+      case 'deshacer-finalistas': m.fin = null; render(); break;
+      case 'aplicar-finalistas': {
+        const pasan = m.lista.filter(p => finalistas().has(p.id));
+        const salen = m.lista.filter(p => p.habilitado.includes(7) && !finalistas().has(p.id));
+        if (!await FC.confirmar({ icono: FC.ico('trofeo'), titulo: `¿Pasan a la final ${pasan.length} participante(s)?`,
+          texto: `Pasan: ${pasan.map(p => p.nombre).join(', ') || 'nadie'}.${salen.length ? ` Se quitará la final a ${salen.length}: ${salen.map(p => p.nombre).join(', ')}.` : ''}`,
+          aceptar: 'Confirmar finalistas', tono: 'dorado' })) return;
+        try {
+          if (pasan.length) await FC.Datos.admin.habilitar(claveMaster(), pasan.map(p => p.id), 7, true);
+          if (salen.length) await FC.Datos.admin.habilitar(claveMaster(), salen.map(p => p.id), 7, false);
+          m.fin = null; await cargarMaster();
+        } catch (e) { alert(e.message); }
+        break;
+      }
+      case 'bloquear': {
+        const valor = el.dataset.v === '1';
+        const nombres = m.lista.filter(p => m.sel.has(p.id)).map(p => p.nombre);
+        if (!await FC.confirmar({ icono: FC.ico(valor ? 'candado' : 'abierto'), titulo: valor ? `¿Congelar el acceso de ${nombres.length} participante(s)?` : `¿Descongelar a ${nombres.length} participante(s)?`,
+          texto: (valor ? 'No podrán entrar, avanzar ni enviar resultados hasta que los descongeles. Su avance y resultados se conservan. ' : 'Podrán volver a entrar y seguir donde se quedaron. ') + listaCorta(nombres),
+          aceptar: valor ? 'Congelar' : 'Descongelar', tono: valor ? 'rojo' : 'certus' })) return;
+        try { await FC.Datos.admin.bloquear(claveMaster(), [...m.sel], valor); await cargarMaster(); } catch (e) { alert(e.message); }
+        break;
+      }
+      case 'borrar-seleccionados': {
+        const elegidos = m.lista.filter(p => m.sel.has(p.id));
+        if (!await FC.confirmar({ icono: FC.ico('papelera'), titulo: `¿Eliminar a ${elegidos.length} participante(s)?`, texto: `Se borrarán sus cuentas y todos sus resultados. No se puede deshacer. ${listaCorta(elegidos.map(p => p.nombre))}`, aceptar: `Eliminar ${elegidos.length}`, tono: 'rojo' })) return;
+        const fallos = [];
+        for (const p of elegidos) { try { await FC.Datos.admin.borrarParticipante(claveMaster(), p.id); m.sel.delete(p.id); } catch (e) { fallos.push(`${p.nombre}: ${e.message}`); } }
+        await cargarMaster();
+        if (fallos.length) alert(`No se pudo eliminar a:\n${fallos.join('\n')}`);
         break;
       }
       case 'borrar-participante': {
@@ -996,6 +1084,7 @@ FC.App = (() => {
     document.querySelectorAll('#vista [data-guiado]').forEach(b => b.addEventListener('click', () => abrirGuiado(b.dataset.guiado)));
     document.querySelectorAll('#vista [data-caso]').forEach(b => b.addEventListener('click', () => abrirCaso(Number(b.dataset.caso))));
     document.querySelectorAll('#vista .sel').forEach(c => c.addEventListener('change', () => { c.checked ? ui.master.sel.add(c.dataset.id) : ui.master.sel.delete(c.dataset.id); render(); }));
+    document.querySelectorAll('#vista .fin').forEach(c => c.addEventListener('change', () => { c.checked ? finalistas().add(c.dataset.id) : finalistas().delete(c.dataset.id); render(); }));
     $('form-login')?.addEventListener('submit', async e => {
       e.preventDefault();
       const clave = $('clave').value.trim();
@@ -1032,6 +1121,7 @@ FC.App = (() => {
       case 'invitacion': inv.editando = false; inv.error = null; abrirEtapaFinal(); return;
       case 'invitacion-cambiar': inv.editando = true; abrirInvitacion(); return;
       case 'actualizar': sincronizar(); return;
+      case 'salir-congelado': P = null; try { localStorage.removeItem(SESION_KEY); } catch { /* */ } ui.acceso = 'entrar'; render(); return;
       case 'reenviar': reintentarEnvios(); return;
       case 'podio-participante': modal('<p class="muted">Cargando el podio…</p>'); FC.Datos.podio(7).then(l => modal(podioHTML(l, 'Podio de la final'))).catch(err => modal(`<p class="mensaje-error">${esc(err.message)}</p>`)); return;
       default: if (ui.vista === 'master') accionMaster(el);
@@ -1061,6 +1151,7 @@ FC.App = (() => {
     try { P = JSON.parse(localStorage.getItem(SESION_KEY)); } catch { P = null; }
     if (P) { P.progreso = { ...progresoVacio(), ...P.progreso }; ui.acceso = 'entrar'; sincronizar(); }
     // Recargar no saca de la pantalla: se vuelve a la vista anterior; el master sin cuenta de participante, a su panel.
+    if (recordado(AVISO_SES)) { ui.acceso = 'entrar'; ui.msg = { acceso: recordado(AVISO_SES) }; recordar(AVISO_SES, null); }
     const vistaPrevia = recordado(VISTA_SES);
     if (['ruta', 'progreso', 'master'].includes(vistaPrevia) && (P || vistaPrevia === 'master')) ui.vista = vistaPrevia;
     else if (!P && esMaster()) ui.vista = 'master';
@@ -1074,7 +1165,7 @@ FC.App = (() => {
     if (ui.vista === 'master' && esMaster()) cargarMaster();
     // Si estaba dentro de un caso de competencia, se reabre donde iba (el cronómetro nunca se detuvo).
     const casoPrevio = Number(recordado(CASO_SES));
-    if (P && !P.demo && casoPrevio && habilitado(casoPrevio) && casoLocal(casoPrevio).estado && !resultadoCaso(casoPrevio)) abrirCaso(casoPrevio);
+    if (P && !P.demo && !P.bloqueado && casoPrevio && habilitado(casoPrevio) && casoLocal(casoPrevio).estado && !resultadoCaso(casoPrevio)) abrirCaso(casoPrevio);
     else recordar(CASO_SES, null);
   }
 
