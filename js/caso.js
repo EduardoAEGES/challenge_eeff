@@ -373,5 +373,8 @@ FC.Caso = (() => {
     cb?.();
   }
 
-  return { init, abrir, tablasEstados, activarTabs, avisoEnvio };
+  // Solo lectura: lo usa el piloto automático del modo prueba
+  const estado = () => (s ? { fase: s.fase, modo: s.modo, caso: s.caso, r: recorrido() } : null);
+
+  return { init, abrir, tablasEstados, activarTabs, avisoEnvio, estado };
 })();

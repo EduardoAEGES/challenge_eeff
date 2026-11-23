@@ -708,3 +708,20 @@ p.invita-cupos { background: var(--superficie-2); color: var(--texto-suave); fon
 
 /* Fin de nivel: seguir aprendiendo o inscribirse al torneo */
 .fin-nivel-opciones { display: grid; gap: 10px; margin: 4px 0 10px; }
+
+/* Piloto automático (modo prueba del master) */
+.piloto { position: fixed; left: 50%; bottom: 104px; transform: translateX(-50%); z-index: 75; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center;
+  max-width: calc(100vw - 32px); padding: 10px 14px; border-radius: 16px; background: #00205b; color: #fff; box-shadow: 0 10px 30px rgba(0, 0, 0, .28); }
+.piloto[hidden] { display: none; }
+.piloto-ic { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #ffc800; color: #00205b; animation: latido 1.6s ease-in-out infinite; }
+.piloto-texto { display: grid; line-height: 1.25; min-width: 170px; }
+.piloto-texto b { font-size: 14px; }
+.piloto-texto span { font-size: 13px; opacity: .85; font-weight: 700; }
+.piloto select { border-radius: 10px; border: 0; padding: 6px 8px; font: inherit; font-weight: 700; font-size: 13px; }
+.piloto-toque { outline: 4px solid #ffc800 !important; outline-offset: 3px; box-shadow: 0 0 0 10px rgba(255, 200, 0, .25) !important; transition: outline-offset .2s; }
+.piloto-config { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 12px 14px; margin-bottom: 12px; border: 2px dashed var(--borde); border-radius: 14px; font-weight: 700; }
+.piloto-config.activo { border-color: #ffc800; background: #fff8e1; }
+.piloto-config label { display: inline-flex; align-items: center; gap: 8px; }
+.piloto-config select.campo { width: auto; padding: 6px 8px; }
+.piloto-interruptor input { width: 20px; height: 20px; }
+@media (max-width: 760px) { .piloto { bottom: 150px; } }
