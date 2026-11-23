@@ -241,5 +241,5 @@ FC.Leccion = (() => {
   }
 
   // ejercicioActual: solo lectura, útil para pruebas automáticas
-  return { init, abrir, confeti, APROBAR_EXAMEN, ejercicioActual: () => s?.ej };
+  return { init, abrir, confeti, APROBAR_EXAMEN, ejercicioActual: () => s?.ej, estado: () => (s ? { fase: s.fase, ej: s.ej } : null) };
 })();

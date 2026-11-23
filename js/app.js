@@ -16,7 +16,7 @@ FC.App = (() => {
 
   let P = null;            // participante con sesión: { usuario, clave, nombre, condicion, habilitado, resultados, progreso, demo? }
   let participanteReal = null;
-  const ui = { vista: 'ruta', acceso: 'registro', msg: null, nuevaCuenta: null, master: { lista: null, ranking: {}, nivel: 6, vivo: 6, detalle: null, fin: null, error: null, ver: {}, sel: new Set(), top: 4 } };
+  const ui = { vista: 'ruta', acceso: 'registro', msg: null, nuevaCuenta: null, master: { lista: null, ranking: {}, nivel: 6, vivo: 6, detalle: null, fin: null, piloto: { activo: false, vel: 'normal', modo: 'experto' }, error: null, ver: {}, sel: new Set(), top: 4 } };
   let sincronizando = null;
 
   const MASTER_REFRESCO = 5000; // ms entre actualizaciones del panel master
@@ -888,11 +888,18 @@ FC.App = (() => {
 
       <div class="seccion"><h2>${FC.ico('matraz')} Modo prueba</h2>
         <div class="tarjeta"><p class="muted" style="font-weight:600;margin-bottom:10px">Recorre cualquier lección o caso sin guardar resultados. El comodín se puede usar una sola vez por nivel.</p>
+          <div class="piloto-config${m.piloto.activo ? ' activo' : ''}">
+            <label class="piloto-interruptor"><input type="checkbox" id="piloto-activo" ${m.piloto.activo ? 'checked' : ''}><span>${FC.ico('play')} <b>Piloto automático</b></span></label>
+            <span class="muted">Al abrir una lección o un caso de abajo, la app lo juega sola, como un estudiante.</span>
+            <label>Velocidad <select class="campo" id="piloto-vel">${[['lento', 'Lento'], ['normal', 'Normal'], ['rapido', 'Rápido']].map(([v, t]) => `<option value="${v}" ${m.piloto.vel === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+            <label>Responde <select class="campo" id="piloto-modo"><option value="experto" ${m.piloto.modo === 'experto' ? 'selected' : ''}>Como experto (todo bien, mejor camino)</option><option value="estudiante" ${m.piloto.modo === 'estudiante' ? 'selected' : ''}>Como estudiante (con algunos errores)</option></select></label>
+          </div>
           <div class="codigos" style="margin:0 0 12px">
             <button class="btn btn-certus btn-chico" data-accion="simular-previa">${FC.ico('trofeo')} Simular etapa previa completada</button>
             <button class="btn btn-blanco btn-chico" data-accion="reiniciar-comodines">${FC.ico('comodin')} Reiniciar comodines de prueba</button>
           </div>
           <div class="codigos">${FC.NIVELES.filter(n => n.lecciones).map(nv => nv.lecciones.map(l => `<button class="btn btn-blanco btn-chico" data-accion="probar-leccion" data-id="${l.id}">N${nv.n} - ${esc(l.titulo)}</button>`).join('')).join('')}
+          ${FC.NIVELES.find(x => x.subniveles).subniveles.map(sb => `<button class="btn btn-azul btn-chico" data-accion="probar-guiado" data-id="${sb.id}">N5 - ${esc(sb.titulo)}</button>`).join('')}
           ${[6, 7].map(n => `<button class="btn btn-certus btn-chico" data-accion="probar-caso" data-n="${n}">N${n} - ${esc(FC.NIVELES.find(x => x.n === n).titulo)}</button>`).join('')}</div></div></div>`;
   }
 
@@ -1020,6 +1027,12 @@ FC.App = (() => {
       case 'probar-leccion': {
         const nivelN = FC.leccionPorId(el.dataset.id).nivel.n;
         FC.Leccion.abrir(el.dataset.id, { prueba: true, comodin: { disponible: () => !comodinesPrueba[nivelN], usar: () => { comodinesPrueba[nivelN] = true; } }, alTerminar: render });
+        if (m.piloto.activo) FC.Piloto.iniciar('leccion', m.piloto);
+        break;
+      }
+      case 'probar-guiado': {
+        abrirGuiado(el.dataset.id, true);
+        if (m.piloto.activo) FC.Piloto.iniciar('caso', m.piloto);
         break;
       }
       case 'reiniciar-comodines': comodinesPrueba = {}; render(); break;
@@ -1027,6 +1040,7 @@ FC.App = (() => {
       case 'probar-caso': {
         const nv = FC.NIVELES.find(x => x.n === n);
         FC.Caso.abrir({ casoId: nv.caso, modo: 'prueba', etiqueta: `Nivel ${n} - ${nv.titulo}`, alCerrar: render });
+        if (m.piloto.activo) FC.Piloto.iniciar('caso', m.piloto);
         break;
       }
     }
@@ -1122,6 +1136,10 @@ FC.App = (() => {
     document.querySelectorAll('#vista [data-guiado]').forEach(b => b.addEventListener('click', () => abrirGuiado(b.dataset.guiado)));
     document.querySelectorAll('#vista [data-caso]').forEach(b => b.addEventListener('click', () => abrirCaso(Number(b.dataset.caso))));
     document.querySelectorAll('#vista .sel').forEach(c => c.addEventListener('change', () => { c.checked ? ui.master.sel.add(c.dataset.id) : ui.master.sel.delete(c.dataset.id); render(); }));
+    // Piloto automático del modo prueba
+    $('piloto-activo')?.addEventListener('change', e => { ui.master.piloto.activo = e.target.checked; render(); });
+    $('piloto-vel')?.addEventListener('change', e => { ui.master.piloto.vel = e.target.value; });
+    $('piloto-modo')?.addEventListener('change', e => { ui.master.piloto.modo = e.target.value; });
     document.querySelectorAll('#vista .fin').forEach(c => c.addEventListener('change', () => { c.checked ? finalistas().add(c.dataset.id) : finalistas().delete(c.dataset.id); render(); }));
     $('form-login')?.addEventListener('submit', async e => {
       e.preventDefault();
