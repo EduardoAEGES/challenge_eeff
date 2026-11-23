@@ -38,7 +38,7 @@ FC.Caso = (() => {
     const modo = opciones.modo || 'competencia';
     const estado = opciones.estado || { elecciones: [], inicio: Date.now(), escenas: [], comodinUsado: false };
     s = { caso, opciones, modo, estado, fase: 'pregunta', seleccion: null, vidas: modo === 'guiado' ? null : FC.VIDAS_COMPETENCIA };
-    dom.titulo.textContent = `${opciones.etiqueta || caso.titulo}${modo === 'prueba' ? ' · MODO PRUEBA' : modo === 'guiado' ? ' · CLASE GUIADA' : ''}`;
+    dom.titulo.textContent = `${opciones.etiqueta || caso.titulo}${modo === 'prueba' ? ' - MODO PRUEBA' : modo === 'guiado' ? ' - CLASE GUIADA' : ''}`;
     dom.vidas.hidden = s.vidas == null;
     dom.reloj.hidden = modo === 'guiado';
     dom.raiz.hidden = false;

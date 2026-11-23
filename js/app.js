@@ -93,7 +93,7 @@ FC.App = (() => {
 
   // ---------- Navegación ----------
   // Al recargar la página se vuelve a la misma pantalla (y al caso abierto, si lo había).
-  const VISTA_SES = 'fc-vista', CASO_SES = 'fc-caso-abierto', AVISO_SES = 'fc-aviso-acceso';
+  const VISTA_SES = 'fc-vista', CASO_SES = 'fc-caso-abierto', AVISO_SES = 'fc-aviso-acceso', TORNEO_SES = 'fc-torneo-ofrecido';
   const recordar = (k, v) => { try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v); } catch { /* */ } };
   const recordado = k => { try { return sessionStorage.getItem(k); } catch { return null; } };
   function ir(vista) {
@@ -112,9 +112,9 @@ FC.App = (() => {
     // Celular: XP, corazones y lecciones en la barra superior
     $('stats-movil').innerHTML = P ? `<span title="XP">${FC.ico('rayo', 't-dorado')}<b>${prog().xp}</b></span><span title="Corazones">${FC.ico('corazon', 't-rojo')}<b>${prog().corazones}</b></span><span title="Lecciones">${FC.ico('libro', 't-azul')}<b>${IDS_LECCIONES.filter(id => prog().lecciones[id]?.aprobada).length}/${TOTAL_LECCIONES}</b></span>` : '';
     renderEncuesta();
-    if (P && !P.demo && !ui.etapaFinalMostrada && etapaPreviaCompleta() && !prog().invitacion && $('modal').hidden && $('leccion').hidden && $('caso').hidden) {
-      ui.etapaFinalMostrada = true;
-      setTimeout(() => abrirEtapaFinal(), 400);
+    if (P && !P.demo && !P.bloqueado && !ui.etapaFinalMostrada && !recordado(TORNEO_SES) && nivelesAprobados() >= 1 && !prog().invitacion && $('modal').hidden && $('leccion').hidden && $('caso').hidden) {
+      ui.etapaFinalMostrada = true; recordar(TORNEO_SES, '1');
+      setTimeout(() => abrirFinNivel(nivelesAprobados(), false), 400);
     }
     enlazar();
   }
@@ -249,7 +249,7 @@ FC.App = (() => {
       return { color: nv.color, estado, actual, examen: l.examen, icono: l.icono, titulo: l.titulo, attr: `data-leccion="${l.id}"`, extra: r ? ` · ${r.precision}%` : '' };
     });
     return `<section class="unidad${abierta ? '' : ' bloqueada'}">
-      <div class="unidad-cabecera c-${nv.color}"><div><small>Nivel ${nv.n} · Teoría</small><h2>${esc(nv.titulo)}</h2><p>${esc(nv.descripcion)}</p></div><div class="emoji">${FC.icono(nv.icono)}</div></div>
+      <div class="unidad-cabecera c-${nv.color}"><div><small>Nivel ${nv.n} - Teoría</small><h2>${esc(nv.titulo)}</h2><p>${esc(nv.descripcion)}</p></div><div class="emoji">${FC.icono(nv.icono)}</div></div>
       ${abierta ? '' : `<p class="muted" style="text-align:center;margin-top:10px">${FC.ico('candado')} Aprueba el examen del nivel ${nv.n - 1} para abrir este nivel.</p>`}
       ${camino(nodos)}</section>`;
   }
@@ -257,7 +257,7 @@ FC.App = (() => {
   function unidadGuiada(nv) {
     const nodos = nv.subniveles.map(sub => ({ color: nv.color, estado: prog().guiado[sub.id] ? 'completado' : 'disponible', icono: sub.icono, titulo: sub.titulo, attr: `data-guiado="${sub.id}"` }));
     return `<section class="unidad">
-      <div class="unidad-cabecera c-${nv.color}"><div><small>Nivel ${nv.n} · ${nv.etapa}</small><h2>${esc(nv.titulo)}</h2><p>${esc(nv.descripcion)}</p></div><div class="emoji">${FC.icono(nv.icono)}</div></div>
+      <div class="unidad-cabecera c-${nv.color}"><div><small>Nivel ${nv.n} - ${nv.etapa}</small><h2>${esc(nv.titulo)}</h2><p>${esc(nv.descripcion)}</p></div><div class="emoji">${FC.icono(nv.icono)}</div></div>
       ${camino(nodos)}</section>`;
   }
 
@@ -279,7 +279,7 @@ FC.App = (() => {
       acciones = `<button class="btn btn-certus" data-caso="${nv.n}">Comenzar caso →</button><span class="muted" style="font-size:13px">Un solo intento · ${FC.VIDAS_COMPETENCIA} vidas · 1 comodín.</span>`;
     }
     return `<section class="unidad">
-      <div class="unidad-cabecera c-certus"><div><small>Nivel ${nv.n} · ${nv.etapa}</small><h2>Caso de empresa</h2><p>Una sola empresa, varias decisiones encadenadas. Resultado por puntaje; el tiempo desempata.</p></div><div class="emoji">${FC.ico('edificio')}</div></div>
+      <div class="unidad-cabecera c-certus"><div><small>Nivel ${nv.n} - ${nv.etapa}</small><h2>Caso de empresa</h2><p>Una sola empresa, varias decisiones encadenadas. Resultado por puntaje; el tiempo desempata.</p></div><div class="emoji">${FC.ico('edificio')}</div></div>
       <div class="caso-tarjeta"><div class="emoji">${FC.icono(nv.icono)}</div>
         <div><span class="chip azul">${nv.etapa}</span><h3>${esc(nv.titulo)}</h3><p>${esc(nv.descripcion)}</p></div>
         <div class="caso-acciones">${acciones}</div></div>
@@ -297,7 +297,7 @@ FC.App = (() => {
         if (nv.subniveles) return `<div class="seccion tarjeta"><h2 style="font-size:18px;font-weight:900;margin-bottom:8px">${FC.icono(nv.icono)} Nivel ${nv.n}: ${esc(nv.titulo)}</h2>
           <table><tbody>${nv.subniveles.map(sb => `<tr><td>${FC.icono(sb.icono)} ${esc(sb.titulo)}</td><td class="num">${prog().guiado[sb.id] ? FC.ico('check', 't-verde') : '<span class="muted">Pendiente</span>'}</td></tr>`).join('')}</tbody></table></div>`;
         const r = resultadoCaso(nv.n);
-        return `<div class="seccion tarjeta"><h2 style="font-size:18px;font-weight:900;margin-bottom:8px">${FC.icono(nv.icono)} Nivel ${nv.n} · ${nv.etapa}: ${esc(nv.titulo)}</h2>
+        return `<div class="seccion tarjeta"><h2 style="font-size:18px;font-weight:900;margin-bottom:8px">${FC.icono(nv.icono)} Nivel ${nv.n} - ${nv.etapa}: ${esc(nv.titulo)}</h2>
           <p>${r ? `Puntaje <b>${r.puntaje}</b> · tiempo ${Math.floor(r.segundos / 60)}:${String(r.segundos % 60).padStart(2, '0')} · ${FC.ico('corazon', 't-rojo')} ${r.vidas}` : habilitado(nv.n) ? 'Habilitado, pendiente de jugar.' : 'Aún no habilitado.'}</p></div>`;
       }).join('')}`;
   }
@@ -313,9 +313,12 @@ FC.App = (() => {
     };
   }
 
-  // ---------- Invitación a la etapa presencial (al terminar los niveles 1 a 4) ----------
-  const EVENTO = { dia: 'Miércoles', fecha: '25 de noviembre', lugar: 'Laboratorio 8', sede: 'Sede Arequipa', cupos: 25, premiados: 4 };
+  // ---------- Inscripción al torneo presencial (se ofrece al aprobar cada nivel 1 a 4) ----------
+  const EVENTO = { nombre: 'Torneo Financial Challenge', dia: 'Viernes', num: 27, mes: 'Noviembre', fecha: '27 de noviembre', corta: '27/11', lugar: 'Laboratorio 8', sede: 'Sede Arequipa', cupos: 25, premiados: 4 };
   const etapaPreviaCompleta = () => Boolean(P) && nivelAprobado(4);
+  // Niveles de lecciones aprobados (se aprueban en orden, así que es el último aprobado)
+  const nivelesAprobados = () => (P ? [1, 2, 3, 4].filter(nivelAprobado).length : 0);
+  const inscrito = () => invitacion()?.respuesta === 'si';
   const invitacion = () => prog().invitacion || null;
   const inv = { editando: false, cupos: null, error: null };
 
@@ -325,6 +328,40 @@ FC.App = (() => {
     const libres = Math.max(0, c.limite - c.confirmados);
     return `<div class="invita-cupos ${libres ? '' : 'lleno'}"><div><b>${libres ? `Quedan ${libres} de ${c.limite} cupos` : 'Cupos agotados'}</b>
       <span>${c.confirmados} confirmado(s)</span></div><div class="barra"><div style="width:${Math.min(100, (c.confirmados / c.limite) * 100)}%"></div></div></div>`;
+  }
+
+  function abrirFinNivel(n, celebrar = true) {
+    if (!P) return;
+    const nv = FC.NIVELES.find(x => x.n === n);
+    const nombre = esc((P.nombre || '').split(' ')[0] || P.usuario);
+    const todo = n >= 4;
+    modalCompleta(`<div class="invita fin-nivel">
+      <div class="invita-cab${celebrar ? '' : ' sin-anim'}">
+        <div class="invita-brillos" aria-hidden="true">${'<i></i>'.repeat(14)}</div>
+        <div class="invita-trofeo">${FC.ico('trofeo')}</div>
+        <small>${celebrar ? `Nivel ${n} aprobado - ${n} de 4` : `${n} de 4 niveles aprobados`}</small>
+        <h2>${celebrar ? `¡Bien hecho, ${nombre}!` : `${nombre}, aún no te inscribes`}</h2>
+        <p>${celebrar ? `Completaste <b>${esc(nv.titulo)}</b>${todo ? ' y toda la etapa previa' : ''}.` : 'Ya puedes competir en el torneo presencial.'} ¿Qué quieres hacer ahora?</p>
+      </div>
+      <div class="invita-cuerpo">
+        <div class="invita-ticket">
+          <div class="invita-fecha"><span>${EVENTO.dia}</span><b>${EVENTO.num}</b><span>${EVENTO.mes}</span></div>
+          <div class="invita-datos">
+            <h3>${EVENTO.nombre}</h3>
+            <p>${FC.ico('pizarra')} Clase guiada y competencia en vivo (Starbucks y Zara)</p>
+            <p>${FC.ico('edificio')} <span><b>${EVENTO.lugar}</b> de la ${EVENTO.sede}</span></p>
+            <p>${FC.ico('regalo')} Gift cards de S/ ${PREMIOS.join(', ').replace(/, (\d+)$/, ' y $1')} para los ${EVENTO.premiados} primeros</p>
+            <p>${FC.ico('usuarios')} Cupo limitado: ${EVENTO.cupos} participantes</p>
+          </div>
+        </div>
+        <div class="fin-nivel-opciones">
+          <button class="btn btn-certus btn-bloque" data-accion="inscribirme">${FC.ico('trofeo')} Quiero inscribirme al torneo</button>
+          ${todo ? '' : `<button class="btn btn-blanco btn-bloque" data-accion="seguir-aprendiendo">${FC.ico('libro')} Quiero seguir aprendiendo (nivel ${n + 1})</button>`}
+          ${todo ? '<button class="btn btn-blanco btn-bloque" data-accion="seguir-aprendiendo">Ahora no</button>' : ''}
+        </div>
+        <p class="muted" style="text-align:center;font-weight:600;font-size:13px;margin:0">Inscribirte toma un minuto: una pregunta rápida y tus datos. Puedes seguir aprendiendo después.</p>
+      </div></div>`);
+    if (celebrar) { FC.Sonido?.completado?.(); FC.Leccion.confeti(); }
   }
 
   // ---------- Antes de la invitación: encuesta NPS ----------
@@ -341,7 +378,7 @@ FC.App = (() => {
     const nombre = esc((P.nombre || '').split(' ')[0] || P.usuario);
     modalCompleta(`<div class="paso-final">
       <div class="pasos-indicador"><span class="activo">1. Tu opinión</span><span>2. Inscripción</span></div>
-      <div class="nps-cab">${FC.ico('trofeo')}<div><small>¡Completaste la etapa previa, ${nombre}!</small><h2>Antes de tu invitación, una pregunta rápida</h2></div></div>
+      <div class="nps-cab">${FC.ico('trofeo')}<div><small>¡Vas muy bien, ${nombre}!</small><h2>Antes de inscribirte, una pregunta rápida</h2></div></div>
       <form id="form-nps" class="nps-form">
         <p class="nps-pregunta">Del 0 al 10, ¿qué tan probable es que recomiendes el Financial Challenge a un compañero?</p>
         <div class="nps-escala" role="radiogroup" aria-label="Puntaje del 0 al 10">
@@ -375,13 +412,13 @@ FC.App = (() => {
       <div class="invita-cab${primeraVez ? '' : ' sin-anim'}">
         <div class="invita-brillos" aria-hidden="true">${'<i></i>'.repeat(14)}</div>
         <div class="invita-trofeo">${FC.ico('trofeo')}</div>
-        <small>Etapa previa completada</small>
+        <small>${EVENTO.nombre} - ${EVENTO.dia} ${EVENTO.fecha}</small>
         <h2>¡Felicitaciones, ${nombre}!</h2>
-        <p>Aprobaste los niveles 1 a 4. Ya estás listo para la etapa presencial del Financial Challenge.</p>
+        <p>${nivelesAprobados() >= 4 ? 'Aprobaste los niveles 1 a 4. Ya estás listo para el torneo presencial.' : `Ya aprobaste ${nivelesAprobados() === 1 ? 'el nivel 1' : `los niveles 1 a ${nivelesAprobados()}`}. Inscríbete al torneo y sigue practicando hasta el ${EVENTO.dia.toLowerCase()}.`}</p>
       </div>
       <div class="invita-cuerpo">
         <div class="invita-ticket">
-          <div class="invita-fecha"><span>${EVENTO.dia}</span><b>25</b><span>Noviembre</span></div>
+          <div class="invita-fecha"><span>${EVENTO.dia}</span><b>${EVENTO.num}</b><span>${EVENTO.mes}</span></div>
           <div class="invita-datos">
             <h3>Te invitamos a participar</h3>
             <p>${FC.ico('pizarra')} Clase guiada y competencia en vivo</p>
@@ -447,11 +484,11 @@ FC.App = (() => {
     render();
   }
 
-  const bannerInvitacion = () => (P && etapaPreviaCompleta()
+  const bannerInvitacion = () => (P && nivelesAprobados() >= 1
     ? `<div class="invita-banner"><span class="invita-banner-ic">${FC.ico('trofeo')}</span>
-        <div><b>${invitacion()?.respuesta === 'si' ? 'Inscripción confirmada' : '¡Completaste la etapa previa!'}</b>
+        <div><b>${inscrito() ? 'Inscripción confirmada al torneo' : `¡Inscríbete al torneo del ${EVENTO.dia.toLowerCase()}!`}</b>
         <span>${EVENTO.dia} ${EVENTO.fecha} · ${EVENTO.lugar} · ${EVENTO.sede}</span></div>
-        <button class="btn btn-chico ${invitacion() ? 'btn-blanco' : 'btn-certus'}" data-accion="invitacion">${invitacion() ? 'Ver invitación' : 'Responder invitación'}</button></div>`
+        <button class="btn btn-chico ${inscrito() ? 'btn-blanco' : 'btn-certus'}" data-accion="invitacion">${inscrito() ? 'Ver inscripción' : 'Inscribirme'}</button></div>`
     : '');
 
   function abrirLeccion(id) {
@@ -462,7 +499,7 @@ FC.App = (() => {
     FC.Leccion.abrir(id, {
       ...opcionesLeccion(info.nivel.n),
       alTerminar: res => {
-        const antes = etapaPreviaCompleta();
+        const antes = nivelesAprobados();
         if (res && !P.demo) {
           const previo = prog().lecciones[id];
           if (!previo || res.precision >= previo.precision || (res.aprobada && !previo.aprobada)) {
@@ -471,10 +508,11 @@ FC.App = (() => {
           prog().xp += res.xp;
           guardarP();
         }
-        const recienTermino = !P.demo && !antes && etapaPreviaCompleta() && !invitacion();
-        if (recienTermino) ui.etapaFinalMostrada = true; // la abre abajo, con la celebración
+        const ahora = nivelesAprobados();
+        const nivelNuevo = !P.demo && ahora > antes && !inscrito();
+        if (nivelNuevo) { ui.etapaFinalMostrada = true; recordar(TORNEO_SES, '1'); } // se ofrece abajo, con la celebración
         render();
-        if (recienTermino) setTimeout(() => abrirEtapaFinal(true), 350);
+        if (nivelNuevo) setTimeout(() => abrirFinNivel(ahora), 350);
       }
     });
   }
@@ -498,7 +536,7 @@ FC.App = (() => {
   function abrirGuiado(id, deMaster = false) {
     const sub = FC.NIVELES.find(n => n.subniveles).subniveles.find(x => x.id === id);
     FC.Caso.abrir({
-      casoId: sub.caso, modo: 'guiado', etiqueta: `Nivel 5 · ${sub.titulo}`,
+      casoId: sub.caso, modo: 'guiado', etiqueta: sub.titulo,
       alTerminar: () => { if (P && !P.demo && !deMaster) { prog().guiado[id] = true; guardarP(); } },
       alCerrar: render
     });
@@ -510,7 +548,7 @@ FC.App = (() => {
     const c = P.demo ? {} : casoLocal(n);
     const yaTermino = Boolean(resultadoCaso(n)) && !P.demo;
     if (!c.estado && !yaTermino && !await FC.confirmar({
-      cabecera: `Nivel ${n} · ${nv.etapa}`, icono: FC.icono(nv.icono) || FC.ico('bandera'), titulo: nv.titulo, texto: 'Lee las reglas antes de empezar.',
+      cabecera: `Nivel ${n} - ${nv.etapa}`, icono: FC.icono(nv.icono) || FC.ico('bandera'), titulo: nv.titulo, texto: 'Lee las reglas antes de empezar.',
       tono: n === 7 ? 'dorado' : 'certus',
       items: [
         [FC.ico('diana'), 'Un solo intento', 'Tu primer recorrido es el que cuenta para el ranking.'],
@@ -524,7 +562,7 @@ FC.App = (() => {
     if (!c.estado) { c.estado = { elecciones: [], inicio: Date.now(), escenas: [], comodinUsado: false }; guardarP(); }
     if (!P.demo && !yaTermino) recordar(CASO_SES, String(n));
     FC.Caso.abrir({
-      casoId: nv.caso, modo: 'competencia', etiqueta: `Nivel ${n} · ${nv.etapa} · ${nv.titulo}${P.demo ? ' · DEMOSTRACIÓN' : ''}`,
+      casoId: nv.caso, modo: 'competencia', etiqueta: `Nivel ${n} - ${nv.etapa} - ${nv.titulo}${P.demo ? ' - DEMOSTRACIÓN' : ''}`,
       estado: c.estado,
       alGuardar: est => { c.estado = est; guardarP(); },
       alTerminar: res => { if (!P.demo) { c.resultado = { ...res, fecha: new Date().toISOString() }; c.pendienteEnvio = true; guardarP(); enviarResultado(n); } },
@@ -629,7 +667,7 @@ FC.App = (() => {
     m.vivoLista = filas.map(x => x.p);
     const cuenta = f => filas.filter(x => x.v.fase === f).length;
     return `<div class="seccion"><h2>${FC.ico('pantalla')} Competencia en vivo <small class="muted" style="font-size:13px">· cada estudiante, paso a paso</small></h2>
-      <nav class="tabs">${[6, 7].map(k => `<button class="tab${k === n ? ' activa' : ''}" data-accion="tab-vivo" data-n="${k}">Nivel ${k} · ${esc(FC.NIVELES.find(x => x.n === k).titulo)}</button>`).join('')}</nav>
+      <nav class="tabs">${[6, 7].map(k => `<button class="tab${k === n ? ' activa' : ''}" data-accion="tab-vivo" data-n="${k}">Nivel ${k} - ${esc(FC.NIVELES.find(x => x.n === k).titulo)}</button>`).join('')}</nav>
       <p class="muted" style="font-weight:700;margin:0 0 10px">${cuenta('jugando')} jugando · ${cuenta('termino') + cuenta('pendiente')} terminaron · ${cuenta('espera')} sin empezar</p>
       ${filas.length ? `<div class="table-wrap"><table class="tabla-vivo"><thead><tr><th>Estado</th><th>Participante</th><th>Avance</th><th>Pantalla actual</th><th class="num">Vidas</th><th class="num">Aciertos</th><th>Comodín</th><th class="num">Tiempo</th><th></th></tr></thead>
         <tbody>${filas.map((x, i) => filaVivo(x.p, n, i)).join('')}</tbody></table></div>`
@@ -697,13 +735,13 @@ FC.App = (() => {
     const r = p.progreso?.invitacion?.respuesta;
     if (r === 'si') { const i = p.progreso.invitacion; return `<span class="chip verde" title="${esc([i.nombre, i.correo, i.celular].filter(Boolean).join(' · '))}">Asistirá</span>`; }
     if (r === 'no') return '<span class="chip">No asistirá</span>';
-    return p.progreso?.lecciones?.n4ex?.aprobada ? '<span class="chip dorado">Sin respuesta</span>' : '<span class="muted">—</span>';
+    return p.progreso?.lecciones?.n1ex?.aprobada ? '<span class="chip dorado">Sin respuesta</span>' : '<span class="muted">—</span>';
   }
   function seccionInscritos(lista) {
     const ins = lista.filter(p => p.progreso?.invitacion?.respuesta === 'si')
       .sort((a, b) => String(a.progreso.invitacion.fecha).localeCompare(String(b.progreso.invitacion.fecha)));
     const lleno = ins.length >= EVENTO.cupos;
-    return `<div class="seccion"><h2>${FC.ico('edificio')} Inscritos · ${EVENTO.dia} ${EVENTO.fecha} · ${EVENTO.lugar}</h2>
+    return `<div class="seccion"><h2>${FC.ico('edificio')} Inscritos al torneo - ${EVENTO.dia} ${EVENTO.fecha} - ${EVENTO.lugar}</h2>
       <div class="tarjeta">
         <div class="invita-cupos ${lleno ? 'lleno' : ''}" style="margin-bottom:12px"><div><b>${ins.length} de ${EVENTO.cupos} cupos ocupados</b><span>${lleno ? 'Cupo completo' : `Quedan ${EVENTO.cupos - ins.length}`}</span></div>
           <div class="barra"><div style="width:${Math.min(100, ins.length / EVENTO.cupos * 100)}%"></div></div></div>
@@ -730,7 +768,7 @@ FC.App = (() => {
             <div><span>Detractores (0–6)</span><div class="barra"><div class="d" style="width:${det}%"></div></div><b>${det}%</b></div>
           </div>
         </div>
-        <p class="muted" style="font-size:13px;margin-top:8px">NPS = % de promotores − % de detractores (de −100 a 100). Se pregunta al terminar la etapa previa.</p>
+        <p class="muted" style="font-size:13px;margin-top:8px">NPS = % de promotores − % de detractores (de −100 a 100). Se pregunta al inscribirse al torneo.</p>
         ${nv.length ? `<div class="table-wrap" style="margin-top:10px"><table><thead><tr><th>Participante</th><th class="num">Nota</th><th>¿Por qué?</th></tr></thead><tbody>
           ${nv.map(({ p, n }) => `<tr><td><b>${esc(p.nombre)}</b></td><td class="num"><span class="nps-chip n${n.valor <= 6 ? 'd' : n.valor <= 8 ? 'p' : 'r'}">${n.valor}</span></td><td>${esc(n.motivo || '—')}</td></tr>`).join('')}</tbody></table></div>` : ''}
       </div>`;
@@ -769,7 +807,7 @@ FC.App = (() => {
     const enLinea = lista.filter(p => estadoVivo(p.hace)[2] === 2).length;
     const jugando = n => lista.filter(p => p.progreso?.casos?.[n]?.estado && !p.resultados?.[n]).length;
     const confirmados = lista.filter(p => p.progreso?.invitacion?.respuesta === 'si').length;
-    const previa = lista.filter(p => p.progreso?.lecciones?.n4ex?.aprobada).length;
+    const previa = lista.filter(p => p.progreso?.lecciones?.n1ex?.aprobada).length; // pueden inscribirse desde el nivel 1
     const terminaron = n => lista.filter(p => p.resultados?.[n]).length;
     const nombreNivel = n => FC.NIVELES.find(x => x.n === n).etapa;
     const filas = lista.map(p => {
@@ -801,14 +839,14 @@ FC.App = (() => {
           <div class="stat"><span class="stat-ic t-azul">${FC.ico('usuarios')}</span><div><small>Registrados</small>${lista.length}</div></div>
           <div class="stat"><span class="stat-ic t-verde">${FC.ico('wifi')}</span><div><small>En línea ahora</small>${enLinea}</div></div>
           <div class="stat"><span class="stat-ic t-morado">${FC.ico('diana')}</span><div><small>Jugando N6 / N7</small>${jugando(6)} / ${jugando(7)}</div></div>
-          <div class="stat"><span class="stat-ic t-azul">${FC.ico('edificio')}</span><div><small>Confirmados 25/11</small>${confirmados} de ${previa}</div></div>
+          <div class="stat"><span class="stat-ic t-azul">${FC.ico('edificio')}</span><div><small>Inscritos al torneo ${EVENTO.corta}</small>${confirmados} de ${previa}</div></div>
           <div class="stat"><span class="stat-ic t-dorado">${FC.ico('bandera')}</span><div><small>Terminaron N6 / N7</small>${terminaron(6)} / ${terminaron(7)}</div></div>
           <div class="stat"><span class="stat-ic t-rojo">${FC.ico('candado')}</span><div><small>Congelados</small>${lista.filter(p => p.bloqueado).length}</div></div>
         </div></div>
 
       ${seccionVivo(lista)}
 
-      <div class="seccion"><h2>${FC.ico('pizarra')} Nivel 5 · Clase guiada</h2>
+      <div class="seccion"><h2>${FC.ico('pizarra')} Nivel 5 - Clase guiada</h2>
         <div class="tarjeta"><p class="muted" style="font-weight:600;margin-bottom:10px">Proyecta y resuelve cada subnivel con la clase. No hay vidas ni puntaje; el comodín se puede usar libremente para mostrar cómo funciona.</p>
           <div class="codigos">${FC.NIVELES.find(n => n.subniveles).subniveles.map(sb => `<button class="btn btn-azul btn-chico" data-accion="guiado-master" data-id="${sb.id}">${FC.icono(sb.icono)} ${esc(sb.titulo)}</button>`).join('')}
           <button class="btn btn-certus btn-chico" data-accion="demo">${FC.ico('play')} Entrar como usuario demo</button></div></div></div>
@@ -828,7 +866,7 @@ FC.App = (() => {
             <button class="btn btn-blanco btn-chico" data-accion="recargar-master">${FC.ico('actualizar')} Actualizar</button>
           </div>
           <p style="font-weight:700;margin-bottom:12px">Seleccionar a los mejores <input class="campo" type="number" min="1" max="50" value="${m.top}" id="top-n" style="width:70px;display:inline-block;padding:6px 8px"> de la competencia (nivel 6) <button class="btn btn-blanco btn-chico" data-accion="sel-top">Seleccionar</button></p>
-          ${lista.length ? `<div class="table-wrap"><table><thead><tr><th></th><th>Participante</th><th>Estado</th><th>Actividad</th><th>Usuario</th><th>Contraseña</th><th class="num">Lecciones</th><th>25/11</th><th>${nombreNivel(6)}</th><th>${nombreNivel(7)}</th><th></th></tr></thead><tbody>${filas}</tbody></table></div>`
+          ${lista.length ? `<div class="table-wrap"><table><thead><tr><th></th><th>Participante</th><th>Estado</th><th>Actividad</th><th>Usuario</th><th>Contraseña</th><th class="num">Lecciones</th><th>Torneo ${EVENTO.corta}</th><th>${nombreNivel(6)}</th><th>${nombreNivel(7)}</th><th></th></tr></thead><tbody>${filas}</tbody></table></div>`
             : `<p class="muted">${m.lista ? 'Aún no hay participantes registrados.' : 'Cargando…'}</p>`}
         </div></div>
 
@@ -836,7 +874,7 @@ FC.App = (() => {
       ${seccionEncuesta(lista)}
 
       <div class="seccion"><h2>${FC.ico('trofeo')} Ranking en vivo</h2>
-        <nav class="tabs">${[6, 7].map(k => `<button class="tab${k === m.nivel ? ' activa' : ''}" data-accion="tab-ranking" data-n="${k}">Nivel ${k} · ${nombreNivel(k)}</button>`).join('')}</nav>
+        <nav class="tabs">${[6, 7].map(k => `<button class="tab${k === m.nivel ? ' activa' : ''}" data-accion="tab-ranking" data-n="${k}">Nivel ${k} - ${nombreNivel(k)}</button>`).join('')}</nav>
         ${m.nivel === 7 && ranking?.length ? `<div class="tarjeta" style="margin-bottom:14px">${podioHTML(ranking.slice(0, 3), 'Podio de la final')}<div class="codigos" style="justify-content:center"><button class="btn btn-certus" data-accion="proyectar-podio">Proyectar podio en pantalla completa</button></div></div>` : ''}
         ${m.nivel === 6 && ranking?.length ? seccionFinalistas(ranking, lista) : ''}
         ${ranking?.length ? `<div class="table-wrap"><table><thead><tr>${m.nivel === 6 ? '<th title="Pasa a la final">Final</th>' : ''}<th>#</th><th>Participante</th><th class="num">Puntaje</th><th class="num">Tiempo</th><th class="num">Vidas</th><th>Comodín</th><th></th></tr></thead>
@@ -854,8 +892,8 @@ FC.App = (() => {
             <button class="btn btn-certus btn-chico" data-accion="simular-previa">${FC.ico('trofeo')} Simular etapa previa completada</button>
             <button class="btn btn-blanco btn-chico" data-accion="reiniciar-comodines">${FC.ico('comodin')} Reiniciar comodines de prueba</button>
           </div>
-          <div class="codigos">${FC.NIVELES.filter(n => n.lecciones).map(nv => nv.lecciones.map(l => `<button class="btn btn-blanco btn-chico" data-accion="probar-leccion" data-id="${l.id}">N${nv.n} · ${esc(l.titulo)}</button>`).join('')).join('')}
-          ${[6, 7].map(n => `<button class="btn btn-certus btn-chico" data-accion="probar-caso" data-n="${n}">N${n} · ${esc(FC.NIVELES.find(x => x.n === n).titulo)}</button>`).join('')}</div></div></div>`;
+          <div class="codigos">${FC.NIVELES.filter(n => n.lecciones).map(nv => nv.lecciones.map(l => `<button class="btn btn-blanco btn-chico" data-accion="probar-leccion" data-id="${l.id}">N${nv.n} - ${esc(l.titulo)}</button>`).join('')).join('')}
+          ${[6, 7].map(n => `<button class="btn btn-certus btn-chico" data-accion="probar-caso" data-n="${n}">N${n} - ${esc(FC.NIVELES.find(x => x.n === n).titulo)}</button>`).join('')}</div></div></div>`;
   }
 
   let cargandoMaster = false;
@@ -988,7 +1026,7 @@ FC.App = (() => {
       case 'simular-previa': iniciarDemo({ previaCompleta: true }); setTimeout(() => abrirEtapaFinal(true), 300); break;
       case 'probar-caso': {
         const nv = FC.NIVELES.find(x => x.n === n);
-        FC.Caso.abrir({ casoId: nv.caso, modo: 'prueba', etiqueta: `Nivel ${n} · ${nv.titulo}`, alCerrar: render });
+        FC.Caso.abrir({ casoId: nv.caso, modo: 'prueba', etiqueta: `Nivel ${n} - ${nv.titulo}`, alCerrar: render });
         break;
       }
     }
@@ -1119,6 +1157,8 @@ FC.App = (() => {
       case 'salir-demo': salirDemo(); return;
       case 'repaso': abrirRepaso(); return;
       case 'invitacion': inv.editando = false; inv.error = null; abrirEtapaFinal(); return;
+      case 'inscribirme': inv.editando = false; inv.error = null; abrirEtapaFinal(); return;
+      case 'seguir-aprendiendo': cerrarModal(); return;
       case 'invitacion-cambiar': inv.editando = true; abrirInvitacion(); return;
       case 'actualizar': sincronizar(); return;
       case 'salir-congelado': P = null; try { localStorage.removeItem(SESION_KEY); } catch { /* */ } ui.acceso = 'entrar'; render(); return;

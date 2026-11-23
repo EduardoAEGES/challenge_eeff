@@ -705,3 +705,6 @@ p.invita-cupos { background: var(--superficie-2); color: var(--texto-suave); fon
 .vivo-pantalla { border-color: var(--azul); }
 .vivo-historial { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .vivo-historial li { border: 2px solid var(--borde); border-radius: 12px; padding: 10px 12px; display: grid; gap: 4px; line-height: 1.4; }
+
+/* Fin de nivel: seguir aprendiendo o inscribirse al torneo */
+.fin-nivel-opciones { display: grid; gap: 10px; margin: 4px 0 10px; }
